@@ -129,7 +129,7 @@ When started, the ConsoleMetricLogger will produce output similar to the followi
     AverageMessageSize: 5910.676328502415
     MessagesSentPerSecond: 2.41545893719806
 
-##### 5) Links
+##### Links
 Full documentation for the project...<br>
 [http://www.oraclepermissiongenerator.net/methodinvocationremoting/application-metrics.html](http://www.oraclepermissiongenerator.net/methodinvocationremoting/application-metrics.html)
 
@@ -138,3 +138,6 @@ A detailed sample implementation...<br>
 
 Code documentation...<br>
 [http://www.oraclepermissiongenerator.net/methodinvocationremoting/ndoc/~ApplicationMetrics.html](http://www.oraclepermissiongenerator.net/methodinvocationremoting/ndoc/~ApplicationMetrics.html)
+
+##### Notes
+- After opening the solution in Visual Studio, the referenced NuGet packages should be restored using the 'Restore' button in the 'Manage NuGet Packages' window.
