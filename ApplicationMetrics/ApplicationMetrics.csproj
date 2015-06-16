@@ -1,0 +1,135 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="12.0">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>8.0.50727</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{76C01D87-B5EB-4B5D-A18D-643D9703827E}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>ApplicationMetrics</RootNamespace>
+    <AssemblyName>ApplicationMetrics</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <UpgradeBackupLocation>
+    </UpgradeBackupLocation>
+    <OldToolsVersion>2.0</OldToolsVersion>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>bin\Debug\ApplicationMetrics.xml</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>bin\Release\ApplicationMetrics.XML</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>ApplicationMetrics.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="FrameworkAbstraction, Version=1.4.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\FrameworkAbstraction.1.4.0.0\lib\net40\FrameworkAbstraction.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AmountMetric.cs" />
+    <Compile Include="AmountMetricEventInstance.cs" />
+    <Compile Include="AmountMetricTotalContainer.cs" />
+    <Compile Include="ApplicationMetricsUtilities.cs" />
+    <Compile Include="ConsoleMetricLogger.cs" />
+    <Compile Include="ConsoleMetricLoggerImplementation.cs" />
+    <Compile Include="CountMetric.cs" />
+    <Compile Include="CountMetricEventInstance.cs" />
+    <Compile Include="CountMetricTotalContainer.cs" />
+    <Compile Include="ExceptionThrower.cs" />
+    <Compile Include="FileMetricLogger.cs" />
+    <Compile Include="FileMetricLoggerImplementation.cs" />
+    <Compile Include="IBufferProcessingStrategy.cs" />
+    <Compile Include="IExceptionHandler.cs" />
+    <Compile Include="IMetricAggregateLogger.cs" />
+    <Compile Include="IMetricLogger.cs" />
+    <Compile Include="IntervalMetric.cs" />
+    <Compile Include="IntervalMetricEventInstance.cs" />
+    <Compile Include="IntervalMetricTotalContainer.cs" />
+    <Compile Include="LoopingWorkerThreadBufferProcessor.cs" />
+    <Compile Include="MetricAggregateContainer.cs" />
+    <Compile Include="MetricAggregateContainerBase.cs" />
+    <Compile Include="MetricAggregateLogger.cs" />
+    <Compile Include="MetricBase.cs" />
+    <Compile Include="MetricEventInstance.cs" />
+    <Compile Include="MetricLoggerBuffer.cs" />
+    <Compile Include="MetricLoggerStorer.cs" />
+    <Compile Include="MicrosoftAccessMetricLogger.cs" />
+    <Compile Include="MicrosoftAccessMetricLoggerImplementation.cs" />
+    <Compile Include="NullMetricLogger.cs" />
+    <Compile Include="PerformanceCounterMetricLogger.cs" />
+    <Compile Include="PerformanceCounterMetricLoggerImplementation.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SizeLimitedBufferProcessor.cs" />
+    <Compile Include="StatusMetric.cs" />
+    <Compile Include="StatusMetricEventInstance.cs" />
+    <Compile Include="StatusMetricValueContainer.cs" />
+    <Compile Include="TimeUnit.cs" />
+    <Compile Include="WorkerThreadBufferProcessorBase.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="ApplicationMetrics.ico" />
+    <Content Include="InterfaceDocumentationComments.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
