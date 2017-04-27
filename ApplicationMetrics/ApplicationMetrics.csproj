@@ -50,15 +50,15 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Release\ApplicationMetrics.XML</DocumentationFile>
+    <DocumentationFile>bin\Release\ApplicationMetrics.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationIcon>ApplicationMetrics.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="FrameworkAbstraction, Version=1.4.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="FrameworkAbstraction, Version=1.6.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\FrameworkAbstraction.1.4.0.0\lib\net40\FrameworkAbstraction.dll</HintPath>
+      <HintPath>..\packages\FrameworkAbstraction.1.6.0.0\lib\net40\FrameworkAbstraction.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Alastair Wyse (http://www.oraclepermissiongenerator.net/methodinvocationremoting/)
+ * Copyright 2017 Alastair Wyse (http://www.oraclepermissiongenerator.net/methodinvocationremoting/)
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -239,12 +239,13 @@ namespace ApplicationMetrics
                 if (disposing)
                 {
                     // Free other state (managed objects).
+                    if (loggerImplementation != null)
+                    {
+                        loggerImplementation.Dispose();
+                    }
                 }
                 // Free your own state (unmanaged objects).
-                if (loggerImplementation != null)
-                {
-                    loggerImplementation.Dispose();
-                }
+
                 // Set large fields to null.
                 loggerImplementation = null;
 

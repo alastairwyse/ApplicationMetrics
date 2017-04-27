@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Alastair Wyse (http://www.oraclepermissiongenerator.net/methodinvocationremoting/)
+ * Copyright 2017 Alastair Wyse (http://www.oraclepermissiongenerator.net/methodinvocationremoting/)
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ namespace ApplicationMetrics
     /// Base class which acts as a buffer for implementations of interface IMetricLogger.  Stores logged metrics events in queues, so as to minimise the time taken to call the logging methods.
     /// </summary>
     /// <remarks>Derived classes must implement methods which process the buffered metric events (e.g. ProcessIntervalMetricEvent()).  These methods are called from a worker thread after dequeueing the buffered metric events.</remarks>
-    abstract class MetricLoggerBuffer : IMetricLogger
+    abstract class MetricLoggerBuffer : IMetricLogger, IDisposable
     {
         // Queue objects 
         /// <summary>Queue used to buffer count metrics.</summary>
@@ -55,10 +55,14 @@ namespace ApplicationMetrics
 
         /// <summary>Object which implements a processing strategy for the buffers (queues).</summary>
         protected IBufferProcessingStrategy bufferProcessingStrategy;
+        /// <summary>The delegate to handle when a BufferProcessed event is raised.</summary>
+        protected EventHandler bufferProcessedEventHandler;
         /// <summary>Object which provides the current date and time.</summary>
         protected IDateTime dateTime;
         /// <summary>Object handles any exceptions.  Allows easier unit testing by pushing exceptions to the IExceptionHandler interface.</summary>
         protected IExceptionHandler exceptionHandler;
+        /// <summary>Indicates whether the object has been disposed.</summary>
+        protected bool disposed;
 
         // Dictionary object to temporarily store the start instance of any received interval metrics
         private Dictionary<Type, IntervalMetricEventInstance> startIntervalMetricEventStore;
@@ -86,7 +90,8 @@ namespace ApplicationMetrics
             intervalMetricEventQueueLock = new object();
 
             this.bufferProcessingStrategy = bufferProcessingStrategy;
-            this.bufferProcessingStrategy.BufferProcessed += delegate(object sender, EventArgs e) { DequeueAndProcessMetricEvents(); };
+            bufferProcessedEventHandler = delegate(object sender, EventArgs e) { DequeueAndProcessMetricEvents(); };
+            this.bufferProcessingStrategy.BufferProcessed += bufferProcessedEventHandler;
             dateTime = new FrameworkAbstraction.DateTime();
             exceptionHandler = new ExceptionThrower();
 
@@ -449,6 +454,61 @@ namespace ApplicationMetrics
                         }
                         break;
                 }
+            }
+        }
+
+        // TODO: Ideally the below method should be called at the top of all public/protected methods however, concerned about performance impact as these methods are called frequently
+        //         May implement this at a later stage.
+
+        /// <summary>
+        /// Throws an ObjectDisposedException if Dispose() has been called on the object.
+        /// </summary>
+        private void ThrowExceptionIfDisposed()
+        {
+            if (disposed == true)
+            {
+                throw new ObjectDisposedException(this.GetType().Name);
+            }
+        }
+
+        #endregion
+
+        #region Finalize / Dispose Methods
+
+        /// <summary>
+        /// Releases the unmanaged resources used by the MetricLoggerBuffer.
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        #pragma warning disable 1591
+        ~MetricLoggerBuffer()
+        {
+            Dispose(false);
+        }
+        #pragma warning restore 1591
+
+        /// <summary>
+        /// Provides a method to free unmanaged resources used by this class.
+        /// </summary>
+        /// <param name="disposing">Whether the method is being called as part of an explicit Dispose routine, and hence whether managed resources should also be freed.</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed)
+            {
+                if (disposing)
+                {
+                    // Free other state (managed objects).
+                    bufferProcessingStrategy.BufferProcessed -= bufferProcessedEventHandler;
+                }
+                // Free your own state (unmanaged objects).
+
+                // Set large fields to null.
+
+                disposed = true;
             }
         }
 

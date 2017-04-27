@@ -219,12 +219,12 @@ namespace ApplicationMetrics
                     if (loggerImplementation != null)
                     {
                         loggerImplementation.Dispose();
-                        loggerImplementation = null;
                     }
                 }
                 // Free your own state (unmanaged objects).
 
                 // Set large fields to null.
+                loggerImplementation = null;
                 
                 disposed = true;
             }

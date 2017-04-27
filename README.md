@@ -141,3 +141,23 @@ Code documentation...<br>
 
 ##### Notes
 - After opening the solution in Visual Studio, the referenced NuGet packages should be restored using the 'Restore' button in the 'Manage NuGet Packages' window.
+
+#### Release History
+
+<table>
+  <tr>
+    <td><b>Version</b></td>
+    <td><b>Changes</b></td>
+  </tr>
+  <tr>
+    <td valign="top">1.5.0.0</td>
+    <td>
+      Classes deriving from MetricLoggerBuffer updated to implement IDisposable.
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">1.4.0.0</td>
+    <td>
+    </td>
+  </tr>
+</table>
