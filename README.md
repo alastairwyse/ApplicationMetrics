@@ -152,12 +152,14 @@ Code documentation...<br>
   <tr>
     <td valign="top">1.5.0.0</td>
     <td>
+      MetricLoggerBuffer class updated to implement IDisposable, and unhook buffer processed event handlers on dispose.<br />
       Classes deriving from MetricLoggerBuffer updated to implement IDisposable.
     </td>
   </tr>
   <tr>
     <td valign="top">1.4.0.0</td>
     <td>
+      Initial version forked from the <a href="http://www.oraclepermissiongenerator.net/methodinvocationremoting/">Method Invocation Remoting</a> project.
     </td>
   </tr>
 </table>
