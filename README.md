@@ -131,13 +131,13 @@ When started, the ConsoleMetricLogger will produce output similar to the followi
 
 ##### Links
 Full documentation for the project...<br>
-[http://www.oraclepermissiongenerator.net/methodinvocationremoting/application-metrics.html](http://www.oraclepermissiongenerator.net/methodinvocationremoting/application-metrics.html)
+[http://www.alastairwyse.net/methodinvocationremoting/application-metrics.html](http://www.alastairwyse.net/methodinvocationremoting/application-metrics.html)
 
 A detailed sample implementation...<br>
-[http://www.oraclepermissiongenerator.net/methodinvocationremoting/sample-application-5.html](http://www.oraclepermissiongenerator.net/methodinvocationremoting/sample-application-5.html)
+[http://www.alastairwyse.net/methodinvocationremoting/sample-application-5.html](http://www.alastairwyse.net/methodinvocationremoting/sample-application-5.html)
 
 Code documentation...<br>
-[http://www.oraclepermissiongenerator.net/methodinvocationremoting/ndoc/~ApplicationMetrics.html](http://www.oraclepermissiongenerator.net/methodinvocationremoting/ndoc/~ApplicationMetrics.html)
+[http://www.alastairwyse.net/methodinvocationremoting/ndoc/~ApplicationMetrics.html](http://www.alastairwyse.net/methodinvocationremoting/ndoc/~ApplicationMetrics.html)
 
 ##### Notes
 - After opening the solution in Visual Studio, the referenced NuGet packages should be restored using the 'Restore' button in the 'Manage NuGet Packages' window.
@@ -159,7 +159,7 @@ Code documentation...<br>
   <tr>
     <td valign="top">1.4.0.0</td>
     <td>
-      Initial version forked from the <a href="http://www.oraclepermissiongenerator.net/methodinvocationremoting/">Method Invocation Remoting</a> project.
+      Initial version forked from the <a href="http://www.alastairwyse.net/methodinvocationremoting/">Method Invocation Remoting</a> project.
     </td>
   </tr>
 </table>
