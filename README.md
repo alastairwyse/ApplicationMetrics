@@ -150,6 +150,7 @@ A detailed sample implementation...<br>
       Removed MicrosoftAccessMetricLogger class.<br />
       PerformanceCounterMetricLogger class moved to separate ApplicationMetrics.MetricLoggers.WindowsPerformanceCounter project.<br />
       MetricLoggerBuffer enhanced to use Stopwatch class for greater accuracy of metrics.<br />
+      Change to LoopingWorkerThreadBufferProcessor class constructor parameters.<br />
     </td>
   </tr>
   <tr>
