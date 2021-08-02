@@ -17,7 +17,7 @@
 namespace ApplicationMetrics.MetricLoggers
 {
     /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="T:ApplicationMetrics.MetricLoggers.IMetricAggregateLogger"]/*'/>
-    public interface IMetricAggregateLogger
+    public interface IMetricAggregateLogger : IMetricLogger
     {
         /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricAggregateLogger.DefineMetricAggregate(ApplicationMetrics.CountMetric,ApplicationMetrics.TimeUnit,System.String,System.String)"]/*'/>
         void DefineMetricAggregate(CountMetric countMetric, TimeUnit timeUnit, string name, string description);
