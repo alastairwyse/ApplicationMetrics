@@ -136,18 +136,21 @@ Full documentation for the project...<br>
 A detailed sample implementation...<br>
 [http://www.alastairwyse.net/methodinvocationremoting/sample-application-5.html](http://www.alastairwyse.net/methodinvocationremoting/sample-application-5.html)
 
-Code documentation...<br>
-[http://www.alastairwyse.net/methodinvocationremoting/ndoc/~ApplicationMetrics.html](http://www.alastairwyse.net/methodinvocationremoting/ndoc/~ApplicationMetrics.html)
-
-##### Notes
-- After opening the solution in Visual Studio, the referenced NuGet packages should be restored using the 'Restore' button in the 'Manage NuGet Packages' window.
-
 #### Release History
 
 <table>
   <tr>
     <td><b>Version</b></td>
     <td><b>Changes</b></td>
+  </tr>
+  <tr>
+    <td valign="top">2.0.0</td>
+    <td>
+      Migrated to .NET Standard.<br />
+      Removed MicrosoftAccessMetricLogger class.<br />
+      PerformanceCounterMetricLogger class moved to separate ApplicationMetrics.MetricLoggers.WindowsPerformanceCounter project.<br />
+      MetricLoggerBuffer enhanced to use Stopwatch class for greater accuracy of metrics.<br />
+    </td>
   </tr>
   <tr>
     <td valign="top">1.5.0.0</td>

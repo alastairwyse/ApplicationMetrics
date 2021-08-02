@@ -14,13 +14,20 @@
  * limitations under the License.
  */
 
-namespace ApplicationMetrics
+namespace ApplicationMetrics.MetricLoggers
 {
     /// <summary>
-    /// Base class for metrics representing an event, where the number of occurrences of that event may be accumulated and recorded.
+    /// Represents a unit of time.
     /// </summary>
-    /// <remarks>Examples of derived classes could be metrics representing a disk read operation, or a message being send to a remote system.</remarks>
-    public abstract class CountMetric : MetricBase
+    public enum TimeUnit
     {
+        /// <summary>A second.</summary>
+        Second,
+        /// <summary>A minute.</summary>
+        Minute,
+        /// <summary>An hour.</summary>
+        Hour,
+        /// <summary>A day.</summary>
+        Day
     }
 }

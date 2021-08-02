@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
-namespace ApplicationMetrics
+namespace ApplicationMetrics.MetricLoggers.UnitTests
 {
     /// <summary>
-    /// Base class for metrics representing an event, where the number of occurrences of that event may be accumulated and recorded.
+    /// A sample interval metric for testing implementations of interface IMetricLogger.
     /// </summary>
-    /// <remarks>Examples of derived classes could be metrics representing a disk read operation, or a message being send to a remote system.</remarks>
-    public abstract class CountMetric : MetricBase
+    class TestMessageProcessingTimeMetric : IntervalMetric
     {
+        public TestMessageProcessingTimeMetric()
+        {
+            base.name = "MessageProcessingTime";
+            base.description = "Represents the amount of time taken to process a single message received from a remote source.";
+        }
     }
 }

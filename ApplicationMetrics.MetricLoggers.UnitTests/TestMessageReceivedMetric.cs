@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
-namespace ApplicationMetrics
+namespace ApplicationMetrics.MetricLoggers.UnitTests
 {
     /// <summary>
-    /// Base class for metrics representing an event, where the number of occurrences of that event may be accumulated and recorded.
+    /// A sample count metric for testing implementations of interface IMetricLogger.
     /// </summary>
-    /// <remarks>Examples of derived classes could be metrics representing a disk read operation, or a message being send to a remote system.</remarks>
-    public abstract class CountMetric : MetricBase
+    class TestMessageReceivedMetric : CountMetric
     {
+        public TestMessageReceivedMetric()
+        {
+            base.name = "MessageReceived";
+            base.description = "A single instance of this metric represents receiving a message from an external source.";
+        }
     }
 }

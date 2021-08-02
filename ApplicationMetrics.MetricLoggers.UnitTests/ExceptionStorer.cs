@@ -14,13 +14,28 @@
  * limitations under the License.
  */
 
-namespace ApplicationMetrics
+using System;
+
+namespace ApplicationMetrics.MetricLoggers.UnitTests
 {
     /// <summary>
-    /// Base class for metrics representing an event, where the number of occurrences of that event may be accumulated and recorded.
+    /// Stores an exception passed to the Handle() method, and exposes it in property StoredException so that its properties can be tested by unit tests.
     /// </summary>
-    /// <remarks>Examples of derived classes could be metrics representing a disk read operation, or a message being send to a remote system.</remarks>
-    public abstract class CountMetric : MetricBase
+    class ExceptionStorer : IExceptionHandler
     {
+        Exception storedException;
+
+        public Exception StoredException
+        {
+            get
+            {
+                return storedException;
+            }
+        }
+
+        public void Handle(Exception e)
+        {
+            storedException = e;
+        }
     }
 }

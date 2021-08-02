@@ -1,14 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31313.79
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApplicationMetrics", "ApplicationMetrics\ApplicationMetrics.csproj", "{76C01D87-B5EB-4B5D-A18D-643D9703827E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ApplicationMetrics", "ApplicationMetrics\ApplicationMetrics.csproj", "{10297329-FF3D-4E16-BCFF-FE3D564CFE79}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApplicationMetrics.UnitTests", "ApplicationMetrics.UnitTests\ApplicationMetrics.UnitTests.csproj", "{8FDB1090-99C3-4C9D-A271-9882A1342C5C}"
-	ProjectSection(ProjectDependencies) = postProject
-		{76C01D87-B5EB-4B5D-A18D-643D9703827E} = {76C01D87-B5EB-4B5D-A18D-643D9703827E}
-	EndProjectSection
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ApplicationMetrics.MetricLoggers.UnitTests", "ApplicationMetrics.MetricLoggers.UnitTests\ApplicationMetrics.MetricLoggers.UnitTests.csproj", "{63DD3A41-8D36-4AB7-9633-D5F07B2ED565}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ApplicationMetrics.MetricLoggers", "ApplicationMetrics.MetricLoggers\ApplicationMetrics.MetricLoggers.csproj", "{89B9061C-0DDF-44C9-818A-5F3B2591D786}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -16,16 +15,23 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{76C01D87-B5EB-4B5D-A18D-643D9703827E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{76C01D87-B5EB-4B5D-A18D-643D9703827E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{76C01D87-B5EB-4B5D-A18D-643D9703827E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{76C01D87-B5EB-4B5D-A18D-643D9703827E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{8FDB1090-99C3-4C9D-A271-9882A1342C5C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8FDB1090-99C3-4C9D-A271-9882A1342C5C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8FDB1090-99C3-4C9D-A271-9882A1342C5C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8FDB1090-99C3-4C9D-A271-9882A1342C5C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{10297329-FF3D-4E16-BCFF-FE3D564CFE79}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{10297329-FF3D-4E16-BCFF-FE3D564CFE79}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{10297329-FF3D-4E16-BCFF-FE3D564CFE79}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{10297329-FF3D-4E16-BCFF-FE3D564CFE79}.Release|Any CPU.Build.0 = Release|Any CPU
+		{63DD3A41-8D36-4AB7-9633-D5F07B2ED565}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{63DD3A41-8D36-4AB7-9633-D5F07B2ED565}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{63DD3A41-8D36-4AB7-9633-D5F07B2ED565}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{63DD3A41-8D36-4AB7-9633-D5F07B2ED565}.Release|Any CPU.Build.0 = Release|Any CPU
+		{89B9061C-0DDF-44C9-818A-5F3B2591D786}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{89B9061C-0DDF-44C9-818A-5F3B2591D786}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{89B9061C-0DDF-44C9-818A-5F3B2591D786}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{89B9061C-0DDF-44C9-818A-5F3B2591D786}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E463E42F-087D-4C11-879C-FCE87BAF2EA0}
 	EndGlobalSection
 EndGlobal

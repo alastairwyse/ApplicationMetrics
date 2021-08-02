@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Alastair Wyse (http://www.oraclepermissiongenerator.net/methodinvocationremoting/)
+ * Copyright 2014 Alastair Wyse (https://github.com/alastairwyse/ApplicationMetrics/)
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,8 @@
  * limitations under the License.
  */
 
-using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace ApplicationMetrics
 {
-    //******************************************************************************
-    //
-    // Class: AmountMetric
-    //
-    //******************************************************************************
     /// <summary>
     /// Base class for metrics representing an event which has an amount associated with it, and where the total of these amounts across multiple occurrences of the event would accumulate.
     /// </summary>

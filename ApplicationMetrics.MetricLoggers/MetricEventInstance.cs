@@ -18,37 +18,49 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace ApplicationMetrics
+namespace ApplicationMetrics.MetricLoggers
 {
     /// <summary>
-    /// Base class for metrics containing common properties.
+    /// Base container class which stores information about the occurrence of a metric event.
     /// </summary>
-    public abstract class MetricBase
+    /// <typeparam name="T">The type of metric the event information should be stored for.</typeparam>
+    abstract class MetricEventInstance<T> where T:MetricBase
     {
-        /// <summary>The name of the metric.</summary>
-        protected string name;
-        /// <summary>A description of the metric, explaining what it measures and/or represents.</summary>
-        protected string description;
+        /// <summary>The metric that occurred.</summary>
+        protected T metric;
+        /// <summary>The date and time the event occurred, expressed as UTC.</summary>
+        protected DateTime eventTime;
 
         /// <summary>
-        /// The name of the metric.
+        /// The metric that occurred.
         /// </summary>
-        public string Name
+        public T Metric
         {
             get
             {
-                return name;
+                return metric;
             }
         }
 
         /// <summary>
-        /// A description of the metric, explaining what it measures and/or represents.
+        /// Returns the type of the metric that occurred.
         /// </summary>
-        public string Description
+        public Type MetricType
         {
             get
             {
-                return description;
+                return metric.GetType();
+            }
+        }
+
+        /// <summary>
+        /// The date and time the event occurred, expressed as UTC.
+        /// </summary>
+        public DateTime EventTime
+        {
+            get
+            {
+                return eventTime;
             }
         }
     }

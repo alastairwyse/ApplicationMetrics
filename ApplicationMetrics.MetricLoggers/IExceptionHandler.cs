@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-namespace ApplicationMetrics
+using System;
+
+namespace ApplicationMetrics.MetricLoggers
 {
-    /// <summary>
-    /// Base class for metrics representing an event, where the number of occurrences of that event may be accumulated and recorded.
-    /// </summary>
-    /// <remarks>Examples of derived classes could be metrics representing a disk read operation, or a message being send to a remote system.</remarks>
-    public abstract class CountMetric : MetricBase
+    /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="T:ApplicationMetrics.MetricLoggers.IExceptionHandler"]/*'/>
+    public interface IExceptionHandler
     {
+        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IExceptionHandler.Handle(System.Exception)"]/*'/>
+        void Handle(Exception e);
     }
 }

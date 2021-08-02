@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>ApplicationMetrics</id>
+    <version>2.0.0</version>
+    <authors>Alastair Wyse</authors>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">Apache-2.0</license>
+    <licenseUrl>https://licenses.nuget.org/Apache-2.0</licenseUrl>
+    <projectUrl>https://github.com/alastairwyse/ApplicationMetrics/</projectUrl>
+    <description>ApplicationMetrics provides interfaces and classes to allow simple logging of metric and instrumentation events from a client application.
+
+ApplicationMetrics includes several implementations of metric logger classes which write metrics and instrumentation information to files, and the console.  It also contains base classes which allow users to easily create metric loggers for logging to persistent data stores.</description>
+    <summary>ApplicationMetrics provides interfaces and classes to allow simple logging of metric and instrumentation events from a client application</summary>
+    <releaseNotes>Migrated to .NET Standard.
+Removed MicrosoftAccessMetricLogger class.
+PerformanceCounterMetricLogger class moved to separate ApplicationMetrics.MetricLoggers.WindowsPerformanceCounter project.
+MetricLoggerBuffer enhanced to use Stopwatch class for greater accuracy of metrics.</releaseNotes>
+    <copyright>Copyright © Alastair Wyse 2021</copyright>
+    <tags>metric metrics instrumentation client application counter statistics</tags>
+    <repository type="git" url="https://github.com/alastairwyse/ApplicationMetrics/" />
+    <dependencies>
+      <group targetFramework=".NETStandard2.0" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="C:\Development\C#\ApplicationMetrics\ApplicationMetrics\bin\Release\netstandard2.0\ApplicationMetrics.dll" target="lib\netstandard2.0\ApplicationMetrics.dll" />
+    <file src="C:\Development\C#\ApplicationMetrics\ApplicationMetrics\bin\Release\netstandard2.0\ApplicationMetrics.xml" target="lib\netstandard2.0\ApplicationMetrics.xml" />
+    <file src="C:\Development\C#\ApplicationMetrics\ApplicationMetrics.MetricLoggers\bin\Release\netstandard2.0\ApplicationMetrics.MetricLoggers.dll" target="lib\netstandard2.0\ApplicationMetrics.MetricLoggers.dll" />
+    <file src="C:\Development\C#\ApplicationMetrics\ApplicationMetrics.MetricLoggers\bin\Release\netstandard2.0\ApplicationMetrics.MetricLoggers.xml" target="lib\netstandard2.0\ApplicationMetrics.MetricLoggers.xml" />
+  </files>
+</package>

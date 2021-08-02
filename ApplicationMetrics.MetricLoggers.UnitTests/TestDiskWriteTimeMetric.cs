@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Alastair Wyse (https://github.com/alastairwyse/ApplicationMetrics/)
+ * Copyright 2015 Alastair Wyse (https://github.com/alastairwyse/ApplicationMetrics/)
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
-namespace ApplicationMetrics
+namespace ApplicationMetrics.MetricLoggers.UnitTests
 {
     /// <summary>
-    /// Base class for metrics representing an event, where the number of occurrences of that event may be accumulated and recorded.
+    /// A sample interval metric for testing implementations of interface IMetricLogger.
     /// </summary>
-    /// <remarks>Examples of derived classes could be metrics representing a disk read operation, or a message being send to a remote system.</remarks>
-    public abstract class CountMetric : MetricBase
+    class TestDiskWriteTimeMetric : IntervalMetric
     {
+        public TestDiskWriteTimeMetric()
+        {
+            base.name = "DiskWriteTime";
+            base.description = "Represents the amount of time taken to perform a write operation to disk.";
+        }
     }
 }

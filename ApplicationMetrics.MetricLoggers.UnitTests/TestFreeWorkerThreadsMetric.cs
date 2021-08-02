@@ -14,13 +14,18 @@
  * limitations under the License.
  */
 
-namespace ApplicationMetrics
+namespace ApplicationMetrics.MetricLoggers.UnitTests
 {
     /// <summary>
-    /// Base class for metrics representing an event, where the number of occurrences of that event may be accumulated and recorded.
+    /// A sample status metric for testing implementations of interface IMetricLogger.
     /// </summary>
-    /// <remarks>Examples of derived classes could be metrics representing a disk read operation, or a message being send to a remote system.</remarks>
-    public abstract class CountMetric : MetricBase
+    class TestFreeWorkerThreadsMetric : StatusMetric
     {
+        public TestFreeWorkerThreadsMetric(long freeWorkerThreadCount)
+        {
+            base.name = "FreeWorkerThreads";
+            base.description = "A single instance of this metric represents the available free worker threads in the application at a given time.";
+            base.value = freeWorkerThreadCount;
+        }
     }
 }

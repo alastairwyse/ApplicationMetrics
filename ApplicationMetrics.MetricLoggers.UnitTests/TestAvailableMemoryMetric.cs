@@ -14,13 +14,18 @@
  * limitations under the License.
  */
 
-namespace ApplicationMetrics
+namespace ApplicationMetrics.MetricLoggers.UnitTests
 {
     /// <summary>
-    /// Base class for metrics representing an event, where the number of occurrences of that event may be accumulated and recorded.
+    /// A sample status metric for testing implementations of interface IMetricLogger.
     /// </summary>
-    /// <remarks>Examples of derived classes could be metrics representing a disk read operation, or a message being send to a remote system.</remarks>
-    public abstract class CountMetric : MetricBase
+    class TestAvailableMemoryMetric : StatusMetric
     {
+        public TestAvailableMemoryMetric(long availableBytes)
+        {
+            base.name = "AvailableMemory";
+            base.description = "A single instance of this metric represents the amount of free memory in the system at a given time.";
+            base.value = availableBytes;
+        }
     }
 }
