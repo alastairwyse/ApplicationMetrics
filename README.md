@@ -40,65 +40,69 @@ Metrics are defined, by deriving from the CountMetric, AmountMetric, StatusMetri
 
 In this sample case ApplicationMetrics is used to capture instrumentation from a class which sends a message to a remote location.  We would define the following 3 metrics...
 
-    class MessageSent : CountMetric
+````C#
+class MessageSent : CountMetric
+{
+    public MessageSent()
     {
-        public MessageSent()
-        {
-            base.name = "MessageSent";
-            base.description = "The number of messages sent";
-        }
+        base.name = "MessageSent";
+        base.description = "The number of messages sent";
     }
-    
-    class MessageSize : AmountMetric
+}
+
+class MessageSize : AmountMetric
+{
+    public MessageSize(long messageSize)
     {
-        public MessageSize(long messageSize)
-        {
-            base.name = "MessageSize";
-            base.description = "The size of a sent message";
-            base.amount = messageSize;
-        }
+        base.name = "MessageSize";
+        base.description = "The size of a sent message";
+        base.amount = messageSize;
     }
-    
-    class MessageSendTime : IntervalMetric
+}
+
+class MessageSendTime : IntervalMetric
+{
+    public MessageSendTime()
     {
-        public MessageSendTime()
-        {
-            base.name = "MessageSendTime";
-            base.description = "The time taken to send a message";
-        }
+        base.name = "MessageSendTime";
+        base.description = "The time taken to send a message";
     }
+}
+````
 
 ##### 2) Using the IMetricLogger interface
 The IMetricLogger interface should be injected into the client class.  The example below shows our message sending class, with an instance of IMetricLogger used to log the above metrics when a message is sent.
 
-    public class MessageSender
-    {
-        private IMetricLogger metricLogger;
-    
-        public MessageSender(IMetricLogger metricLogger)
-        {
-            this.metricLogger = metricLogger;
-        }
-    
-        public void Send(String message)
-        {
-            metricLogger.Begin(new MessageSendTime());
-    
-            // Call private method to perform the send
-            try
-            {
-                SendMessage(message);
-            }
-            catch (Exception e)
-            {
-                metricLogger.CancelBegin(new MessageSendTime());
-                throw e;
-            }
+````C#
+public class MessageSender
+{
+    private IMetricLogger metricLogger;
 
-            metricLogger.End(new MessageSendTime());
-            metricLogger.Increment(new MessageSent());
-            metricLogger.Add(new MessageSize(message.Length));
+    public MessageSender(IMetricLogger metricLogger)
+    {
+        this.metricLogger = metricLogger;
+    }
+
+    public void Send(String message)
+    {
+        metricLogger.Begin(new MessageSendTime());
+
+        // Call private method to perform the send
+        try
+        {
+            SendMessage(message);
         }
+        catch (Exception e)
+        {
+            metricLogger.CancelBegin(new MessageSendTime());
+            throw e;
+        }
+
+        metricLogger.End(new MessageSendTime());
+        metricLogger.Increment(new MessageSent());
+        metricLogger.Add(new MessageSize(message.Length));
+    }
+````
 
 The MessageSender class could be instantiated using a FileMetricLogger with the below statements...
 
@@ -108,29 +112,33 @@ The MessageSender class could be instantiated using a FileMetricLogger with the 
 ##### 3) Using the IMetricAggregateLogger interface
 Classes that implement IMetricAggregateLogger (ConsoleMetricLogger and PerformanceCounterMetricLogger) let you define and log aggregates of individual metrics.  The example client code below shows how to define some aggregates for the above metrics...
 
-    static void Main(string[] args)
-    {
-        LoopingWorkerThreadBufferProcessor bufferProcessor = new LoopingWorkerThreadBufferProcessor(5000, false);
-        ConsoleMetricLogger metricLogger = new ConsoleMetricLogger(bufferProcessor, true);
-    
-        // Define a metric aggregate to record the average size of sent messages (total message size / number of messages sent)
-        metricLogger.DefineMetricAggregate(new MessageSize(0), new MessageSent(), "AverageMessageSize", "The average size of sent messages");
-    
-        // Define a metric aggregate to record the number of messages sent per second (number of messages sent / number of seconds of runtime)
-        metricLogger.DefineMetricAggregate(new MessageSent(), TimeUnit.Second, "MessagesSentPerSecond", "The number of messages sent per second");
-    }
+````C#
+static void Main(string[] args)
+{
+    LoopingWorkerThreadBufferProcessor bufferProcessor = new LoopingWorkerThreadBufferProcessor(5000, false);
+    ConsoleMetricLogger metricLogger = new ConsoleMetricLogger(bufferProcessor, true);
+
+    // Define a metric aggregate to record the average size of sent messages (total message size / number of messages sent)
+    metricLogger.DefineMetricAggregate(new MessageSize(0), new MessageSent(), "AverageMessageSize", "The average size of sent messages");
+
+    // Define a metric aggregate to record the number of messages sent per second (number of messages sent / number of seconds of runtime)
+    metricLogger.DefineMetricAggregate(new MessageSent(), TimeUnit.Second, "MessagesSentPerSecond", "The number of messages sent per second");
+}
+````
 
 ##### 4) Viewing the metrics
 When started, the ConsoleMetricLogger will produce output similar to the following...
 
-    ---------------------------------------------------
-    -- Application metrics as of 2015-06-16 13:01:11 --
-    ---------------------------------------------------
-    MessageSent: 207
-    MessageSize: 1223510
-    MessageSendTime: 12834
-    AverageMessageSize: 5910.676328502415
-    MessagesSentPerSecond: 2.41545893719806
+```
+---------------------------------------------------
+-- Application metrics as of 2015-06-16 13:01:11 --
+---------------------------------------------------
+MessageSent: 207
+MessageSize: 1223510
+MessageSendTime: 12834
+AverageMessageSize: 5910.676328502415
+MessagesSentPerSecond: 2.41545893719806
+```
 
 ##### Links
 Full documentation for the project...<br>
