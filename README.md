@@ -106,8 +106,10 @@ public class MessageSender
 
 The MessageSender class could be instantiated using a FileMetricLogger with the below statements...
 
-    FileMetricLogger metricLogger  = new FileMetricLogger('|', @"C:\Test\MessageSenderMetrics.log", 1000, true);
-    MessageSender testMessageSender = new MessageSender(metricLogger);
+````C#
+FileMetricLogger metricLogger  = new FileMetricLogger('|', @"C:\Test\MessageSenderMetrics.log", 1000, true);
+MessageSender testMessageSender = new MessageSender(metricLogger);
+````
 
 ##### 3) Using the IMetricAggregateLogger interface
 Classes that implement IMetricAggregateLogger (ConsoleMetricLogger and PerformanceCounterMetricLogger) let you define and log aggregates of individual metrics.  The example client code below shows how to define some aggregates for the above metrics...
