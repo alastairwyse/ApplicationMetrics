@@ -7,8 +7,8 @@ ApplicationMetrics provides simple interfaces and classes to allow capturing met
 3. To provide a simple mechanism of viewing metrics through the Windows Performance Monitor (i.e. simpler than that provided by the .NET PerformanceCounter and CounterCreationData classes)\*.
 4. To provide additional implementation of metric loggers and viewers for files, console, and relational databases, plus base classes to allow consumers to easily provide their own implementations of metric loggers and viewers†.
 
-\* Note that the PerformanceCounterMetricLogger class which was used to view metrics through the Windows Performance Monitor, has been moved to a separate project since this project was migrated to .NET Standard.  
-† Note that the [MicrosoftAccessMetricLogger](https://github.com/alastairwyse/ApplicationMetrics/blob/1.5.0.0/ApplicationMetrics/MicrosoftAccessMetricLogger.cs) and [MicrosoftAccessMetricLoggerImplementation](https://github.com/alastairwyse/ApplicationMetrics/blob/1.5.0.0/ApplicationMetrics/MicrosoftAccessMetricLoggerImplementation.cs) classes which served as an example of a metric logger which wrote to a relational database has been deprecated as of version 2.0.0.
+\* Note that the PerformanceCounterMetricLogger class which was used to view metrics through the Windows Performance Monitor, has been moved to a [separate project](https://github.com/alastairwyse/ApplicationMetrics.MetricLoggers.WindowsPerformanceCounter) since this project was migrated to .NET Standard.  
+† Note that the [MicrosoftAccessMetricLogger](https://github.com/alastairwyse/ApplicationMetrics/blob/1.5.0.0/ApplicationMetrics/MicrosoftAccessMetricLogger.cs) and [MicrosoftAccessMetricLoggerImplementation](https://github.com/alastairwyse/ApplicationMetrics/blob/1.5.0.0/ApplicationMetrics/MicrosoftAccessMetricLoggerImplementation.cs) classes have been deprecated as of version 2.0.0, but still serve as an example of implementing a metric logger that writes to a relational database
 
 #### Getting Started
 
@@ -107,7 +107,7 @@ public class MessageSender
 The MessageSender class could be instantiated using a FileMetricLogger with the below statements...
 
 ````C#
-FileMetricLogger metricLogger  = new FileMetricLogger('|', @"C:\Test\MessageSenderMetrics.log", 1000, true);
+FileMetricLogger metricLogger  = new FileMetricLogger('|', @"C:\Test\MessageSenderMetrics.log", new LoopingWorkerThreadBufferProcessor(1000), true);
 MessageSender testMessageSender = new MessageSender(metricLogger);
 ````
 
@@ -117,7 +117,7 @@ Classes that implement IMetricAggregateLogger (ConsoleMetricLogger and Performan
 ````C#
 static void Main(string[] args)
 {
-    LoopingWorkerThreadBufferProcessor bufferProcessor = new LoopingWorkerThreadBufferProcessor(5000, false);
+    LoopingWorkerThreadBufferProcessor bufferProcessor = new LoopingWorkerThreadBufferProcessor(5000);
     ConsoleMetricLogger metricLogger = new ConsoleMetricLogger(bufferProcessor, true);
 
     // Define a metric aggregate to record the average size of sent messages (total message size / number of messages sent)
@@ -143,6 +143,8 @@ MessagesSentPerSecond: 2.41545893719806
 ```
 
 ##### Links
+The documentation below was written for version 1.* of ApplicationMetrics.  Minor implementation details may have changed in versions 2.0.0 and above, however the basic principles and use cases documented are still valid.
+
 Full documentation for the project...<br>
 [http://www.alastairwyse.net/methodinvocationremoting/application-metrics.html](http://www.alastairwyse.net/methodinvocationremoting/application-metrics.html)
 
