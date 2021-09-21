@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Alastair Wyse (https://github.com/alastairwyse/ApplicationMetrics/)
+ * Copyright 2021 Alastair Wyse (https://github.com/alastairwyse/ApplicationMetrics/)
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 
 using System;
 using System.Threading;
+using System.Collections.Generic;
 using NUnit.Framework;
 
 namespace ApplicationMetrics.MetricLoggers.UnitTests
@@ -25,95 +26,283 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
     /// <summary>
     /// Unit tests for class ApplicationMetrics.MetricLoggers.SizeLimitedBufferProcessorTests.
     /// </summary>
-    class SizeLimitedBufferProcessorTests
+    public class SizeLimitedBufferProcessorTests
     {
+        // Some of these tests use Thread.Sleep() statements to synchronise activity between the main thread and buffer processing worker thread, and hence results could be non-deterministic depending on system thread scheduling and performance.
+        // Decided to do this, as making things fully deterministic would involve adding more test-only thread synchronising mechanisms (in addition to the existing WorkerThreadBufferProcessorBase.loopIterationCompleteSignal property), which would mean more redundtant statements executing during normal runtime.
+        // I think the current implementation strikes a balance between having fully deterministic tests, and not interfering too much with normal runtime operation.
+
+        private ManualResetEvent loopIterationCompleteSignal;
         private SizeLimitedBufferProcessor testSizeLimitedBufferProcessor;
-        private int bufferProcessedEventRaisedCount;
+        private CountingMetricLogger testCountingMetricLogger;
+        private Int32 millisecondsToWaitBeforeStop;
 
         [SetUp]
         protected void SetUp()
         {
-            testSizeLimitedBufferProcessor = new SizeLimitedBufferProcessor(5);
-            testSizeLimitedBufferProcessor.BufferProcessed += delegate(object sender, EventArgs e) { bufferProcessedEventRaisedCount++; };
-            bufferProcessedEventRaisedCount = 0;
+            loopIterationCompleteSignal = new ManualResetEvent(false);
+            testSizeLimitedBufferProcessor = new SizeLimitedBufferProcessor(3, loopIterationCompleteSignal);
+            testCountingMetricLogger = new CountingMetricLogger(testSizeLimitedBufferProcessor, true);
+            millisecondsToWaitBeforeStop = 250;
         }
 
         [TearDown]
         protected void TearDown()
         {
+            testCountingMetricLogger.Dispose();
             testSizeLimitedBufferProcessor.Dispose();
+            loopIterationCompleteSignal.Dispose();
         }
 
-        /* 
-         * NOTE: The below tests are potentially non-deterministic, as the 'Assert' statements could potentially be executed before the thread signalled inside the SizeLimitedBufferProcessor class has had a chance to iterate its loop (depending on thread scheduling in the operating system).
-         *       On some systems it may be necessary to put Thread.Sleep() instructions between the test steps, and the 'Assert'(s).
-         */
-
         [Test]
-        public void BufferProcessedEventRaisedAfterEventsBufferred()
+        public void Stop_NoRemainingEventsAndProcessRemainingEventsSetTrue()
         {
-            testSizeLimitedBufferProcessor.Start();
-            testSizeLimitedBufferProcessor.NotifyCountMetricEventBuffered();
-            testSizeLimitedBufferProcessor.NotifyAmountMetricEventBuffered();
-            testSizeLimitedBufferProcessor.NotifyStatusMetricEventBuffered();
-            testSizeLimitedBufferProcessor.NotifyIntervalMetricEventBuffered();
-            testSizeLimitedBufferProcessor.NotifyCountMetricEventBuffered();
-            // After 5 metric events are buffered the buffer size limit is reached, and the metric events should be processed and the buffers cleared
-            testSizeLimitedBufferProcessor.NotifyCountMetricEventBufferCleared();
-            testSizeLimitedBufferProcessor.NotifyAmountMetricEventBufferCleared();
-            testSizeLimitedBufferProcessor.NotifyStatusMetricEventBufferCleared();
-            testSizeLimitedBufferProcessor.NotifyIntervalMetricEventBufferCleared();
+            testCountingMetricLogger.Start();
+            testCountingMetricLogger.Add(new TestMessageBytesReceivedMetric(100));
+            testCountingMetricLogger.Increment(new TestMessageReceivedMetric());
+            testCountingMetricLogger.Set(new TestAvailableMemoryMetric(1000000));
+            // Sleep to try to ensure the worker thread has enough time to process the above buffered events
+            Thread.Sleep(millisecondsToWaitBeforeStop);
             testSizeLimitedBufferProcessor.Stop();
+            loopIterationCompleteSignal.WaitOne();
 
-            Assert.AreEqual(1, bufferProcessedEventRaisedCount);
+            Assert.AreEqual(1, testCountingMetricLogger.AmountMetricsProcessed);
+            Assert.AreEqual(1, testCountingMetricLogger.CountMetricsProcessed);
+            Assert.AreEqual(1, testCountingMetricLogger.StatusMetricsProcessed);
+            testCountingMetricLogger.Stop();
         }
 
         [Test]
-        public void BufferProcessedEventRaisedAfterStopWithNoParameter()
+        public void Stop_NoRemainingEventsAndProcessRemainingEventsSetFalse()
         {
-            testSizeLimitedBufferProcessor.Start();
-            testSizeLimitedBufferProcessor.NotifyCountMetricEventBuffered();
-            testSizeLimitedBufferProcessor.NotifyAmountMetricEventBuffered();
-            testSizeLimitedBufferProcessor.NotifyStatusMetricEventBuffered();
-            testSizeLimitedBufferProcessor.NotifyIntervalMetricEventBuffered();
+            testCountingMetricLogger.Start();
+            testCountingMetricLogger.Add(new TestMessageBytesReceivedMetric(100));
+            testCountingMetricLogger.Increment(new TestMessageReceivedMetric());
+            testCountingMetricLogger.Set(new TestAvailableMemoryMetric(1000000));
+            // Sleep to try to ensure the worker thread has enough time to process the above buffered events
+            Thread.Sleep(millisecondsToWaitBeforeStop);
+            testSizeLimitedBufferProcessor.Stop(false);
+            loopIterationCompleteSignal.WaitOne();
+
+            Assert.AreEqual(1, testCountingMetricLogger.AmountMetricsProcessed);
+            Assert.AreEqual(1, testCountingMetricLogger.CountMetricsProcessed);
+            Assert.AreEqual(1, testCountingMetricLogger.StatusMetricsProcessed);
+            testCountingMetricLogger.Stop();
+        }
+
+        [Test]
+        public void Stop_RemainingEventsAndProcessRemainingEventsSetTrue()
+        {
+            testCountingMetricLogger.Start();
+            testCountingMetricLogger.Add(new TestMessageBytesReceivedMetric(100));
+            testCountingMetricLogger.Increment(new TestMessageReceivedMetric());
+            testCountingMetricLogger.Set(new TestAvailableMemoryMetric(1000000));
+            // Sleep to try to ensure the worker thread has enough time to process the above buffered events
+            Thread.Sleep(millisecondsToWaitBeforeStop);
+            testCountingMetricLogger.Add(new TestMessageBytesReceivedMetric(200));
             testSizeLimitedBufferProcessor.Stop();
+            loopIterationCompleteSignal.WaitOne();
 
-            Assert.AreEqual(1, bufferProcessedEventRaisedCount);
+            Assert.AreEqual(2, testCountingMetricLogger.AmountMetricsProcessed);
+            Assert.AreEqual(1, testCountingMetricLogger.CountMetricsProcessed);
+            Assert.AreEqual(1, testCountingMetricLogger.StatusMetricsProcessed);
+            testCountingMetricLogger.Stop();
         }
 
         [Test]
-        public void BufferProcessedEventRaisedAfterStopWithTrueParameter()
+        public void Stop_RemainingEventsAndProcessRemainingEventsSetFalse()
         {
+            testCountingMetricLogger.Start();
+            testCountingMetricLogger.Add(new TestMessageBytesReceivedMetric(100));
+            testCountingMetricLogger.Increment(new TestMessageReceivedMetric());
+            testCountingMetricLogger.Set(new TestAvailableMemoryMetric(1000000));
+            // Sleep to try to ensure the worker thread has enough time to process the above buffered events
+            Thread.Sleep(millisecondsToWaitBeforeStop);
+            testCountingMetricLogger.Add(new TestMessageBytesReceivedMetric(200));
+            testSizeLimitedBufferProcessor.Stop(false);
+            loopIterationCompleteSignal.WaitOne();
+
+            Assert.AreEqual(1, testCountingMetricLogger.AmountMetricsProcessed);
+            Assert.AreEqual(1, testCountingMetricLogger.CountMetricsProcessed);
+            Assert.AreEqual(1, testCountingMetricLogger.StatusMetricsProcessed);
+            testCountingMetricLogger.Stop();
+        }
+
+        [Test]
+        public void Stop_ExceptionOccursOnWorkerThread()
+        {
+            testSizeLimitedBufferProcessor = new SizeLimitedBufferProcessor(3, loopIterationCompleteSignal);
+            testSizeLimitedBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { throw new Exception("Mock worker thread exception."); };
+            testSizeLimitedBufferProcessor.Start();
+            testSizeLimitedBufferProcessor.NotifyAmountMetricEventBuffered();
+            testSizeLimitedBufferProcessor.NotifyCountMetricEventBuffered();
+            testSizeLimitedBufferProcessor.NotifyIntervalMetricEventBuffered();
+            // Sleep to try to ensure the worker thread has enough time to process the above buffered events and throw an exception
+            Thread.Sleep(millisecondsToWaitBeforeStop);
+
+            Exception e = Assert.Throws<Exception>(delegate
+            {
+                testSizeLimitedBufferProcessor.Stop();
+            });
+
+            Assert.That(e.Message, Does.StartWith("Exception occurred on buffer processing worker thread at "));
+            Assert.That(e.InnerException.Message, Does.StartWith("Mock worker thread exception."));
+        }
+
+        [Test]
+        public void Stop_ExceptionOccursOnWorkerThreadProcessingRemainingEvents()
+        {
+            testSizeLimitedBufferProcessor = new SizeLimitedBufferProcessor(3, loopIterationCompleteSignal);
+            testSizeLimitedBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { throw new Exception("Mock worker thread exception."); };
+            testSizeLimitedBufferProcessor.Start();
+            testSizeLimitedBufferProcessor.NotifyAmountMetricEventBuffered();
+            testSizeLimitedBufferProcessor.NotifyCountMetricEventBuffered();
+            // Sleep to try to ensure the worker thread has enough time to process the above buffered events
+            Thread.Sleep(millisecondsToWaitBeforeStop);
+
+            Exception e = Assert.Throws<Exception>(delegate
+            {
+                testSizeLimitedBufferProcessor.Stop();
+            });
+
+            Assert.That(e.Message, Does.StartWith("Exception occurred on buffer processing worker thread at "));
+            Assert.That(e.InnerException.Message, Does.StartWith("Mock worker thread exception."));
+        }
+
+        [Test]
+        public void NotifyCountMetricEventBuffered()
+        {
+            Boolean bufferProcessedEventTriggered = false;
+            testSizeLimitedBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { bufferProcessedEventTriggered = true; };
             testSizeLimitedBufferProcessor.Start();
             testSizeLimitedBufferProcessor.NotifyCountMetricEventBuffered();
-            testSizeLimitedBufferProcessor.NotifyAmountMetricEventBuffered();
-            testSizeLimitedBufferProcessor.NotifyStatusMetricEventBuffered();
-            testSizeLimitedBufferProcessor.NotifyIntervalMetricEventBuffered();
-            testSizeLimitedBufferProcessor.Stop(true);
-
-            Assert.AreEqual(1, bufferProcessedEventRaisedCount);
-        }
-
-        [Test]
-        public void BufferProcessedEventNotRaisedAfterStopWithFalseParameter()
-        {
-            testSizeLimitedBufferProcessor.Start();
             testSizeLimitedBufferProcessor.NotifyCountMetricEventBuffered();
-            testSizeLimitedBufferProcessor.NotifyAmountMetricEventBuffered();
-            testSizeLimitedBufferProcessor.NotifyStatusMetricEventBuffered();
-            testSizeLimitedBufferProcessor.NotifyIntervalMetricEventBuffered();
-            testSizeLimitedBufferProcessor.Stop(false);
+            testSizeLimitedBufferProcessor.NotifyCountMetricEventBuffered();
+            // Sleep to try to ensure the worker thread has enough time to process the above buffered events
+            Thread.Sleep(millisecondsToWaitBeforeStop);
 
-            Assert.AreEqual(0, bufferProcessedEventRaisedCount);
+            Assert.IsTrue(bufferProcessedEventTriggered);
         }
 
         [Test]
-        public void BufferProcessedEventNotRaisedAfterStopWithNoBufferedMetricEvents()
+        public void NotifyAmountMetricEventBuffered()
         {
+            Boolean bufferProcessedEventTriggered = false;
+            testSizeLimitedBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { bufferProcessedEventTriggered = true; };
             testSizeLimitedBufferProcessor.Start();
-            testSizeLimitedBufferProcessor.Stop(false);
+            testSizeLimitedBufferProcessor.NotifyAmountMetricEventBuffered();
+            testSizeLimitedBufferProcessor.NotifyAmountMetricEventBuffered();
+            testSizeLimitedBufferProcessor.NotifyAmountMetricEventBuffered();
+            // Sleep to try to ensure the worker thread has enough time to process the above buffered events
+            Thread.Sleep(millisecondsToWaitBeforeStop);
 
-            Assert.AreEqual(0, bufferProcessedEventRaisedCount);
+            Assert.IsTrue(bufferProcessedEventTriggered);
         }
+
+        [Test]
+        public void NotifyStatusMetricEventBuffered()
+        {
+            Boolean bufferProcessedEventTriggered = false;
+            testSizeLimitedBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { bufferProcessedEventTriggered = true; };
+            testSizeLimitedBufferProcessor.Start();
+            testSizeLimitedBufferProcessor.NotifyStatusMetricEventBuffered();
+            testSizeLimitedBufferProcessor.NotifyStatusMetricEventBuffered();
+            testSizeLimitedBufferProcessor.NotifyStatusMetricEventBuffered();
+            // Sleep to try to ensure the worker thread has enough time to process the above buffered events
+            Thread.Sleep(millisecondsToWaitBeforeStop);
+
+            Assert.IsTrue(bufferProcessedEventTriggered);
+        }
+
+        [Test]
+        public void NotifyIntervalMetricEventBuffered()
+        {
+            Boolean bufferProcessedEventTriggered = false;
+            testSizeLimitedBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { bufferProcessedEventTriggered = true; };
+            testSizeLimitedBufferProcessor.Start();
+            testSizeLimitedBufferProcessor.NotifyIntervalMetricEventBuffered();
+            testSizeLimitedBufferProcessor.NotifyIntervalMetricEventBuffered();
+            testSizeLimitedBufferProcessor.NotifyIntervalMetricEventBuffered();
+            // Sleep to try to ensure the worker thread has enough time to process the above buffered events
+            Thread.Sleep(millisecondsToWaitBeforeStop);
+
+            Assert.IsTrue(bufferProcessedEventTriggered);
+        }
+        #region Nested Classes
+
+        /// <summary>
+        /// Simple implementation of MetricLoggerBuffer which counts the number of each different type of metric event logged.
+        /// </summary>
+        /// <remarks>In real world use cases, classes derived from WorkerThreadBufferProcessorBase aren't instantiated and called directly, but are used in conjunction with (i.e. through) implementations of MetricLoggerBuffer.  MetricLoggerBuffer also includes serialization around calls to the WorkerThreadBufferProcessorBase.Notify*() methods which are critical to WorkerThreadBufferProcessorBase's operation.  Hence makes sense to test in the context of being used from MetricLoggerBuffer.</remarks>
+        private class CountingMetricLogger : MetricLoggerBuffer
+        {
+            private Int32 amountMetricsProcessed;
+            private Int32 countMetricsProcessed;
+            private Int32 intervalMetricsProcessed;
+            private Int32 statusMetricsProcessed;
+
+            /// <summary>
+            /// The number of amount metrics processed.
+            /// </summary>
+            public Int32 AmountMetricsProcessed
+            {
+                get { return amountMetricsProcessed; }
+            }
+
+            /// <summary>
+            /// The number of count metrics processed.
+            /// </summary>
+            public Int32 CountMetricsProcessed
+            {
+                get { return countMetricsProcessed; }
+            }
+
+            /// <summary>
+            /// The number of interval metrics processed.
+            /// </summary>
+            public Int32 IntervalMetricsProcessed
+            {
+                get { return intervalMetricsProcessed; }
+            }
+
+            /// <summary>
+            /// The number of status metrics processed.
+            /// </summary>
+            public Int32 StatusMetricsProcessed
+            {
+                get { return statusMetricsProcessed; }
+            }
+
+            public CountingMetricLogger(IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking)
+                : base(bufferProcessingStrategy, intervalMetricChecking)
+            {
+                amountMetricsProcessed = 0;
+                countMetricsProcessed = 0;
+                intervalMetricsProcessed = 0;
+                statusMetricsProcessed = 0;
+            }
+
+            protected override void ProcessCountMetricEvents(Queue<CountMetricEventInstance> countMetricEvents)
+            {
+                countMetricsProcessed += countMetricEvents.Count;
+            }
+
+            protected override void ProcessAmountMetricEvents(Queue<AmountMetricEventInstance> amountMetricEvents)
+            {
+                amountMetricsProcessed += amountMetricEvents.Count;
+            }
+
+            protected override void ProcessStatusMetricEvents(Queue<StatusMetricEventInstance> statusMetricEvents)
+            {
+                statusMetricsProcessed += statusMetricEvents.Count;
+            }
+
+            protected override void ProcessIntervalMetricEvents(Queue<Tuple<IntervalMetricEventInstance, Int64>> intervalMetricEventsAndDurations)
+            {
+                intervalMetricsProcessed += intervalMetricEventsAndDurations.Count;
+            }
+        }
+
+        #endregion
     }
 }

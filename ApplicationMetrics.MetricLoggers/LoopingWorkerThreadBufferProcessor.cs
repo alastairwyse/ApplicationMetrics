@@ -24,22 +24,20 @@ namespace ApplicationMetrics.MetricLoggers
     /// </summary>
     public class LoopingWorkerThreadBufferProcessor : WorkerThreadBufferProcessorBase
     {
-        // TODO: Since this class has a ManualResetEvent member, it should implement IDisposable, but since the ManualResetEvent is only used for unit tests, I'm not going to implement for now.
-
-        private int dequeueOperationLoopInterval;
-        private ManualResetEvent loopIterationCompleteSignal;
+        /// <summary>The time to wait (in milliseconds) between iterations of the worker thread which dequeues and processes metric events.</summary>
+        protected Int32 dequeueOperationLoopInterval;
+        /// <summary>The number of iterations of the worker thread to process.</summary>
+        protected Int32 loopIterationCount;
 
         /// <summary>
         /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.LoopingWorkerThreadBufferProcessor class.
         /// </summary>
         /// <param name="dequeueOperationLoopInterval">The time to wait (in milliseconds) between iterations of the worker thread which dequeues and processes metric events.</param>
-        public LoopingWorkerThreadBufferProcessor(int dequeueOperationLoopInterval)
+        public LoopingWorkerThreadBufferProcessor(Int32 dequeueOperationLoopInterval)
             : base()
         {
-            if (dequeueOperationLoopInterval < 0)
-            {
-                throw new ArgumentOutOfRangeException("dequeueOperationLoopInterval", dequeueOperationLoopInterval, "Argument 'dequeueOperationLoopInterval' must be greater than or equal to 0.");
-            }
+            if (dequeueOperationLoopInterval < 1)
+                throw new ArgumentOutOfRangeException("dequeueOperationLoopInterval", dequeueOperationLoopInterval, $"Argument '{nameof(dequeueOperationLoopInterval)}' must be greater than or equal to 1.");
 
             this.dequeueOperationLoopInterval = dequeueOperationLoopInterval;
             loopIterationCompleteSignal = null;
@@ -49,44 +47,44 @@ namespace ApplicationMetrics.MetricLoggers
         /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.LoopingWorkerThreadBufferProcessor class.
         /// </summary>
         /// <param name="dequeueOperationLoopInterval">The time to wait (in milliseconds) between iterations of the worker thread which dequeues and processes metric events.</param>
-        /// <param name="loopIterationCompleteSignal">Signal that is set when a single iteration of the worker thread is complete (for unit testing).</param>
-        public LoopingWorkerThreadBufferProcessor(int dequeueOperationLoopInterval, ManualResetEvent loopIterationCompleteSignal) 
-            : base()
+        /// <param name="loopIterationCompleteSignal">Signal that will be set when the worker thread processing is complete (for unit testing).</param>
+        /// <param name="loopIterationCount">The number of iterations of the worker thread to process.</param>
+        /// <remarks>This constructor is included to facilitate unit testing.</remarks>
+        public LoopingWorkerThreadBufferProcessor(Int32 dequeueOperationLoopInterval, ManualResetEvent loopIterationCompleteSignal, Int32 loopIterationCount) 
+            : this(dequeueOperationLoopInterval)
         {
-            if (dequeueOperationLoopInterval < 0)
-            {
-                throw new ArgumentOutOfRangeException("dequeueOperationLoopInterval", dequeueOperationLoopInterval, "Argument 'dequeueOperationLoopInterval' must be greater than or equal to 0.");
-            }
+            if (loopIterationCompleteSignal == null)
+                throw new ArgumentNullException(nameof(loopIterationCompleteSignal), $"Parameter '{nameof(loopIterationCompleteSignal)}' cannot be null.");
+            if (loopIterationCount < 1)
+                throw new ArgumentOutOfRangeException(nameof(loopIterationCount), $"Parameter '{nameof(loopIterationCount)}' must be greater than 0.");
 
-            this.dequeueOperationLoopInterval = dequeueOperationLoopInterval;
-            this.loopIterationCompleteSignal = loopIterationCompleteSignal;
+            base.loopIterationCompleteSignal = loopIterationCompleteSignal;
+            this.loopIterationCount = loopIterationCount;
         }
 
         /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.Start"]/*'/>
         public override void Start()
         {
-            bufferProcessingWorkerThread = new Thread(delegate()
+            base.BufferProcessingAction = () =>
             {
-                while (cancelRequest == false)
+                while (stopRequestReceived == false)
                 {
                     OnBufferProcessed(EventArgs.Empty);
                     if (dequeueOperationLoopInterval > 0)
                     {
                         Thread.Sleep(dequeueOperationLoopInterval);
                     }
-                    // If the code is being tested, allow only a single iteration of the loop
+                    // If the code is being tested, break out of processing after the specified number of iterations
                     if (loopIterationCompleteSignal != null)
                     {
-                        loopIterationCompleteSignal.Set();
-                        break;
+                        loopIterationCount--;
+                        if (loopIterationCount == 0)
+                        {
+                            break;
+                        }
                     }
                 }
-                if (TotalMetricEventsBufferred > 0 && processRemainingBufferredMetricsOnStop == true)
-                {
-                    OnBufferProcessed(EventArgs.Empty);
-                }
-            });
-
+            };
             base.Start();
         }
     }

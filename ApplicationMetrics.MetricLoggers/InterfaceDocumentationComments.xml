@@ -45,17 +45,6 @@
       </summary>
       <param name="intervalMetric">The interval metric that should be cancelled.</param>
     </member>
-    <member name="T:ApplicationMetrics.MetricLoggers.IExceptionHandler">
-      <summary>
-        Defines a method to handle Exceptions.  When injected into an object, this allows exceptions thrown by worker threads in the object to be captured outside the object.  Useful for test frameworks like NMock2 which do not capture exceptions on worker threads.
-      </summary>
-    </member>
-    <member name="M:ApplicationMetrics.MetricLoggers.IExceptionHandler.Handle(System.Exception)">
-      <summary>
-        Handles an exception.
-      </summary>
-      <param name="e">The exception to handle.</param>
-    </member>
     <member name="T:ApplicationMetrics.MetricLoggers.IMetricAggregateLogger">
       <summary>
         Defines methods to register aggregates of metric events, allowing the values of these aggregates to be recorded and logged when the underlying metric events occur.
@@ -185,6 +174,11 @@
     <member name="E:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.BufferProcessed">
       <summary>
         Occurs when the metric events stored in the buffer are removed from the buffer and processed.
+      </summary>
+    </member>
+    <member name="P:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.ProcessingException">
+      <summary>
+        Contains an exception which occurred during buffer processing.  Null if no exception has occurred.
       </summary>
     </member>
   </members>

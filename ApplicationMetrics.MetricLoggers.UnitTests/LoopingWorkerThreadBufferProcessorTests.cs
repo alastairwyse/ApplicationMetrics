@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Alastair Wyse (https://github.com/alastairwyse/ApplicationMetrics/)
+ * Copyright 2021 Alastair Wyse (https://github.com/alastairwyse/ApplicationMetrics/)
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
     /// <summary>
     /// Unit tests for class ApplicationMetrics.MetricLoggers.LoopingWorkerThreadBufferProcessor.
     /// </summary>
-    class LoopingWorkerThreadBufferProcessorTests
+    public class LoopingWorkerThreadBufferProcessorTests
     {
         private LoopingWorkerThreadBufferProcessor testLoopingWorkerThreadBufferProcessor;
 
@@ -35,11 +35,29 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             testLoopingWorkerThreadBufferProcessor = new LoopingWorkerThreadBufferProcessor(500);
         }
 
+        [TearDown]
+        protected void TearDown()
+        {
+            testLoopingWorkerThreadBufferProcessor.Dispose();
+        }
+
+        [Test]
+        public void Constructor_DequeueOperationLoopIntervalParameterInvalid()
+        {
+            var e = Assert.Throws<ArgumentOutOfRangeException>(delegate
+            {
+                testLoopingWorkerThreadBufferProcessor = new LoopingWorkerThreadBufferProcessor(0);
+            });
+
+            Assert.That(e.Message, Does.StartWith("Argument 'dequeueOperationLoopInterval' must be greater than or equal to 1."));
+            Assert.AreEqual(e.ParamName, "dequeueOperationLoopInterval");
+        }
+
         [Test]
         public void BufferProcessedEventRaisedAfterStop()
         {
             // Tests that the BufferProcessed event is raised if the buffers still contain metric events after the Stop() method is called.
-            //   Unfortunately this unit test is not deterministic, and assumes that the operating system will schedule the main and worker threads so that the calls to NotifyCountMetricEventBuffered() and Stop() will occur before the worker thread has completed one iteration of its loop.
+            //   This unit test is not deterministic, and assumes that the operating system will schedule the main and worker threads so that the calls to NotifyCountMetricEventBuffered() and Stop() will occur before the worker thread has completed one iteration of its loop.
 
             int bufferProcessedEventRaisedCount = 0;
             testLoopingWorkerThreadBufferProcessor.BufferProcessed += delegate(object sender, EventArgs e) { bufferProcessedEventRaisedCount++; };

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+using System;
 using StandardAbstraction;
 
 namespace ApplicationMetrics.MetricLoggers
@@ -21,20 +22,10 @@ namespace ApplicationMetrics.MetricLoggers
     /// <summary>
     /// Writes metric and instrumentation events for an application to the console.
     /// </summary>
-    public class ConsoleMetricLogger : IMetricLogger, IMetricAggregateLogger
+    public class ConsoleMetricLogger : MetricAggregateLogger
     {
-        private ConsoleMetricLoggerImplementation loggerImplementation;
-
-        /// <summary>
-        /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.ConsoleMetricLogger class.
-        /// </summary>
-        /// <remarks>This constructor defaults to using the LoopingWorkerThreadBufferProcessor as the buffer processing strategy, and is maintained for backwards compatibility.</remarks>
-        /// <param name="dequeueOperationLoopInterval">The time to wait (in milliseconds) between iterations of the worker thread which dequeues metric events and writes them to the console.</param>
-        /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).</param>
-        public ConsoleMetricLogger(int dequeueOperationLoopInterval, bool intervalMetricChecking)
-        {
-            loggerImplementation = new ConsoleMetricLoggerImplementation(new LoopingWorkerThreadBufferProcessor(dequeueOperationLoopInterval), intervalMetricChecking);
-        }
+        private const string separatorString = ": ";
+        private IConsole console;
 
         /// <summary>
         /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.ConsoleMetricLogger class.
@@ -42,8 +33,9 @@ namespace ApplicationMetrics.MetricLoggers
         /// <param name="bufferProcessingStrategy">Object which implements a processing strategy for the buffers (queues).</param>
         /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).</param>
         public ConsoleMetricLogger(IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking)
+            : base(bufferProcessingStrategy, intervalMetricChecking)
         {
-            loggerImplementation = new ConsoleMetricLoggerImplementation(bufferProcessingStrategy, intervalMetricChecking);
+            console = new StandardAbstraction.Console();
         }
 
         /// <summary>
@@ -54,100 +46,157 @@ namespace ApplicationMetrics.MetricLoggers
         /// <param name="console">A test (mock) console object.</param>
         /// <param name="dateTime">A test (mock) DateTime object.</param>
         /// <param name="stopWatch">A test (mock) Stopwatch object.</param>
-        /// <param name="exceptionHandler">A test (mock) exception handler object.</param>
-        public ConsoleMetricLogger(IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking, IConsole console, IDateTime dateTime, IStopwatch stopWatch, IExceptionHandler exceptionHandler)
+        public ConsoleMetricLogger(IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking, IConsole console, IDateTime dateTime, IStopwatch stopWatch)
+            : base(bufferProcessingStrategy, intervalMetricChecking, dateTime, stopWatch)
         {
-            loggerImplementation = new ConsoleMetricLoggerImplementation(bufferProcessingStrategy, intervalMetricChecking, console, dateTime, stopWatch, exceptionHandler);
+            this.console = console;
+        }
+
+        #region Base Class Method Implementations
+
+        /// <summary>
+        /// Dequeues and logs metric events stored in the internal buffer, and logs any defined metric aggregates.
+        /// </summary>
+        protected override void DequeueAndProcessMetricEvents()
+        {
+            console.Clear();
+            console.WriteLine("---------------------------------------------------");
+            System.DateTime now = dateTime.Now;
+            console.WriteLine("-- Application metrics as of " + now.ToString("yyyy-MM-dd HH:mm:ss") + " --");
+            console.WriteLine("---------------------------------------------------");
+            base.DequeueAndProcessMetricEvents();
         }
 
         /// <summary>
-        /// Starts a worker thread which calls methods to dequeue metric events and write them to the console.
+        /// Logs the total of a count metric to the console.
         /// </summary>
-        /// <remarks>Although this method has been deprecated in base classes, in the case of ConsoleMetricLogger this Start() method should be called (rather than the Start() on the IBufferProcessingStrategy implementation) as it performs additional initialization specific to ConsoleMetricLogger.</remarks>
-        public void Start()
+        /// <param name="countMetric">The count metric to log.</param>
+        /// <param name="value">The total.</param>
+        protected override void LogCountMetricTotal(CountMetric countMetric, Int64 value)
         {
-            loggerImplementation.Start();
+            console.WriteLine(countMetric.Name + separatorString + value.ToString());
         }
 
         /// <summary>
-        /// Stops the worker thread.
+        /// Logs the total of an amount metric to the console.
         /// </summary>
-        /// <remarks>This method is maintained on this class for backwards compatibility, as it is now available on interface IBufferProcessingStrategy.</remarks>
-        public void Stop()
+        /// <param name="amountMetric">The amount metric to log.</param>
+        /// <param name="value">The total.</param>
+        protected override void LogAmountMetricTotal(AmountMetric amountMetric, Int64 value)
         {
-            loggerImplementation.Stop();
+            console.WriteLine(amountMetric.Name + separatorString + value.ToString());
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Increment(ApplicationMetrics.CountMetric)"]/*'/>
-        public void Increment(CountMetric countMetric)
+        /// <summary>
+        /// Logs the most recent value of a status metric to the console.
+        /// </summary>
+        /// <param name="statusMetric">The status metric to log.</param>
+        /// <param name="value">The value.</param>
+        protected override void LogStatusMetricValue(StatusMetric statusMetric, Int64 value)
         {
-            loggerImplementation.Increment(countMetric);
+            console.WriteLine(statusMetric.Name + separatorString + value.ToString());
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Add(ApplicationMetrics.AmountMetric)"]/*'/>
-        public void Add(AmountMetric amountMetric)
+        /// <summary>
+        /// Logs the total of an interval metric to the console.
+        /// </summary>
+        /// <param name="intervalMetric">The interval metric to log.</param>
+        /// <param name="value">The total.</param>
+        protected override void LogIntervalMetricTotal(IntervalMetric intervalMetric, Int64 value)
         {
-            loggerImplementation.Add(amountMetric);
+            console.WriteLine(intervalMetric.Name + separatorString + value.ToString());
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Set(ApplicationMetrics.StatusMetric)"]/*'/>
-        public void Set(StatusMetric statusMetric)
+        /// <summary>
+        /// Logs a metric aggregate representing the number of occurrences of a count metric within the specified time unit to the console.
+        /// </summary>
+        /// <param name="metricAggregate">The metric aggregate to log.</param>
+        /// <param name="totalInstances">The number of occurrences of the count metric.</param>
+        /// <param name="totalElapsedTimeUnits">The total elapsed time units.</param>
+        protected override void LogCountOverTimeUnitAggregate(MetricAggregateContainer<CountMetric> metricAggregate, Int64 totalInstances, Int64 totalElapsedTimeUnits)
         {
-            loggerImplementation.Set(statusMetric);
+            if (totalElapsedTimeUnits != 0)
+            {
+                double aggregateValue = Convert.ToDouble(totalInstances) / totalElapsedTimeUnits;
+                console.WriteLine(metricAggregate.Name + separatorString + aggregateValue);
+            }
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Begin(ApplicationMetrics.IntervalMetric)"]/*'/>
-        public void Begin(IntervalMetric intervalMetric)
+        /// <summary>
+        /// Logs a metric aggregate representing the total of an amount metric per occurrence of a count metric to the console.
+        /// </summary>
+        /// <param name="metricAggregate">The metric aggregate to log.</param>
+        /// <param name="totalAmount">The total of the amount metric.</param>
+        /// <param name="totalInstances">The number of occurrences of the count metric.</param>
+        protected override void LogAmountOverCountAggregate(MetricAggregateContainer<AmountMetric, CountMetric> metricAggregate, Int64 totalAmount, Int64 totalInstances)
         {
-            loggerImplementation.Begin(intervalMetric);
+            if (totalInstances != 0)
+            {
+                double aggregateValue = Convert.ToDouble(totalAmount) / totalInstances;
+                console.WriteLine(metricAggregate.Name + separatorString + aggregateValue);
+            }
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.End(ApplicationMetrics.IntervalMetric)"]/*'/>
-        public void End(IntervalMetric intervalMetric)
+        /// <summary>
+        /// Logs a metric aggregate respresenting the total of an amount metric within the specified time unit to the console.
+        /// </summary>
+        /// <param name="metricAggregate">The metric aggregate to log.</param>
+        /// <param name="totalAmount">The total of the amount metric.</param>
+        /// <param name="totalElapsedTimeUnits">The total elapsed time units.</param>
+        protected override void LogAmountOverTimeUnitAggregate(MetricAggregateContainer<AmountMetric> metricAggregate, Int64 totalAmount, Int64 totalElapsedTimeUnits)
         {
-            loggerImplementation.End(intervalMetric);
+            if (totalElapsedTimeUnits != 0)
+            {
+                double aggregateValue = Convert.ToDouble(totalAmount) / totalElapsedTimeUnits;
+                console.WriteLine(metricAggregate.Name + separatorString + aggregateValue);
+            }
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.CancelBegin(ApplicationMetrics.IntervalMetric)"]/*'/>
-        public void CancelBegin(IntervalMetric intervalMetric)
+        /// <summary>
+        /// Logs a metric aggregate respresenting the total of an amount metric divided by the total of another amount metric to the console.
+        /// </summary>
+        /// <param name="metricAggregate">The metric aggregate to log.</param>
+        /// <param name="numeratorTotal">The total of the numerator amount metric.</param>
+        /// <param name="denominatorTotal">The total of the denominator amount metric.</param>
+        protected override void LogAmountOverAmountAggregate(MetricAggregateContainer<AmountMetric, AmountMetric> metricAggregate, Int64 numeratorTotal, Int64 denominatorTotal)
         {
-            loggerImplementation.CancelBegin(intervalMetric);
+            if (denominatorTotal != 0)
+            {
+                double aggregateValue = Convert.ToDouble(numeratorTotal) / denominatorTotal;
+                console.WriteLine(metricAggregate.Name + separatorString + aggregateValue);
+            }
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricAggregateLogger.DefineMetricAggregate(ApplicationMetrics.CountMetric,ApplicationMetrics.TimeUnit,System.String,System.String)"]/*'/>
-        public void DefineMetricAggregate(CountMetric countMetric, TimeUnit timeUnit, string name, string description)
+        /// <summary>
+        /// Logs a metric aggregate respresenting the total of an interval metric per occurrence of a count metric to the console.
+        /// </summary>
+        /// <param name="metricAggregate">The metric aggregate to log.</param>
+        /// <param name="totalInterval">The total of the interval metric.</param>
+        /// <param name="totalInstances">The number of occurrences of the count metric.</param>
+        protected override void LogIntervalOverCountAggregate(MetricAggregateContainer<IntervalMetric, CountMetric> metricAggregate, Int64 totalInterval, Int64 totalInstances)
         {
-            loggerImplementation.DefineMetricAggregate(countMetric, timeUnit, name, description);
+            if (totalInstances != 0)
+            {
+                double aggregateValue = Convert.ToDouble(totalInterval) / totalInstances;
+                console.WriteLine(metricAggregate.Name + separatorString + aggregateValue);
+            }
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricAggregateLogger.DefineMetricAggregate(ApplicationMetrics.AmountMetric,ApplicationMetrics.CountMetric,System.String,System.String)"]/*'/>
-        public void DefineMetricAggregate(AmountMetric amountMetric, CountMetric countMetric, string name, string description)
+        /// <summary>
+        /// Logs a metric aggregate representing the total of an interval metric as a fraction of the total runtime of the logger to the console.
+        /// </summary>
+        /// <param name="metricAggregate">The metric aggregate to log.</param>
+        /// <param name="totalInterval">The total of the interval metric.</param>
+        /// <param name="totalRunTime">The total run time of the logger since starting in milliseonds.</param>
+        protected override void LogIntervalOverTotalRunTimeAggregate(MetricAggregateContainer<IntervalMetric> metricAggregate, Int64 totalInterval, Int64 totalRunTime)
         {
-            loggerImplementation.DefineMetricAggregate(amountMetric, countMetric, name, description);
+            if (totalRunTime > 0)
+            {
+                double aggregateValue = Convert.ToDouble(totalInterval) / totalRunTime;
+                console.WriteLine(metricAggregate.Name + separatorString + aggregateValue);
+            }
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricAggregateLogger.DefineMetricAggregate(ApplicationMetrics.AmountMetric,ApplicationMetrics.TimeUnit,System.String,System.String)"]/*'/>
-        public void DefineMetricAggregate(AmountMetric amountMetric, TimeUnit timeUnit, string name, string description)
-        {
-            loggerImplementation.DefineMetricAggregate(amountMetric, timeUnit, name, description);
-        }
-
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricAggregateLogger.DefineMetricAggregate(ApplicationMetrics.AmountMetric,ApplicationMetrics.AmountMetric,System.String,System.String)"]/*'/>
-        public void DefineMetricAggregate(AmountMetric numeratorAmountMetric, AmountMetric denominatorAmountMetric, string name, string description)
-        {
-            loggerImplementation.DefineMetricAggregate(numeratorAmountMetric, denominatorAmountMetric, name, description);
-        }
-
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricAggregateLogger.DefineMetricAggregate(ApplicationMetrics.IntervalMetric,ApplicationMetrics.CountMetric,System.String,System.String)"]/*'/>
-        public void DefineMetricAggregate(IntervalMetric intervalMetric, CountMetric countMetric, string name, string description)
-        {
-            loggerImplementation.DefineMetricAggregate(intervalMetric, countMetric, name, description);
-        }
-
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricAggregateLogger.DefineMetricAggregate(ApplicationMetrics.IntervalMetric,System.String,System.String)"]/*'/>
-        public void DefineMetricAggregate(IntervalMetric intervalMetric, string name, string description)
-        {
-            loggerImplementation.DefineMetricAggregate(intervalMetric, name, description);
-        }
+        #endregion
     }
 }

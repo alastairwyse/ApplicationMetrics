@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>ApplicationMetrics</id>
-    <version>2.0.0</version>
+    <version>3.0.0</version>
     <authors>Alastair Wyse</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">Apache-2.0</license>
@@ -12,11 +12,16 @@
 
 ApplicationMetrics includes several implementations of metric logger classes which write metrics and instrumentation information to files, and the console.  It also contains base classes which allow users to easily create metric loggers for logging to persistent data stores.</description>
     <summary>ApplicationMetrics provides interfaces and classes to allow simple logging of metric and instrumentation events from a client application</summary>
-    <releaseNotes>Migrated to .NET Standard.
-Removed MicrosoftAccessMetricLogger class.
-PerformanceCounterMetricLogger class moved to separate ApplicationMetrics.MetricLoggers.WindowsPerformanceCounter project.
-MetricLoggerBuffer enhanced to use Stopwatch class for greater accuracy of metrics.
-Change to LoopingWorkerThreadBufferProcessor class constructor parameters.</releaseNotes>
+    <releaseNotes>MetricLoggerBuffer Process*MetricEvents() methods signatures changed to pass a collection of metric event instances (rather than single metric event instance) to allow bulk transfer to external systems and/or storage.
+MetricLoggerBuffer DequeueAndProcess*MetricEvents() methods updated to move events to temporary queue via reference swap rather than moving of individual items for better performance.
+WorkerThreadBufferProcessorBase Notify*MetricEventBuffered() and Notify*MetricEventBufferCleared() methods use the Interlocked class to update queue item counts to prevent compiler instruction reordering.
+Worker thread exception handling re-written to properly catch and re-throw exceptions on subsequent calls to main thread methods.
+Removed *LoggerImplementation classes.
+MetricAggregateContainer* classes made nested classes of MetricAggregateLogger.
+MetricEventInstance* classes made nested classes of MetricLoggerBuffer.
+MetricTotalContainer* classes made nested of MetricLoggerStorer.
+IMetricLogger interface moved to ApplicationMetrics namespace.
+General re-write of and improvement to unit tests.</releaseNotes>
     <copyright>Copyright © Alastair Wyse 2021</copyright>
     <tags>metric metrics instrumentation client application counter statistics</tags>
     <icon>images\ApplicationMetrics.png</icon>

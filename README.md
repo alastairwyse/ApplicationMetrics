@@ -157,6 +157,21 @@ A detailed sample implementation...<br>
     <td><b>Changes</b></td>
   </tr>
   <tr>
+    <td valign="top">3.0.0</td>
+    <td>
+      MetricLoggerBuffer Process*MetricEvents() methods signatures changed to pass a collection of metric event instances (rather than single metric event instance) to allow bulk transfer to external systems and/or storage.<br />
+      MetricLoggerBuffer DequeueAndProcess*MetricEvents() methods updated to move events to temporary queue via reference swap rather than moving of individual items for better performance.<br />
+      WorkerThreadBufferProcessorBase Notify*MetricEventBuffered() and Notify*MetricEventBufferCleared() methods use the Interlocked class to update queue item counts to prevent compiler instruction reordering.<br />
+      Worker thread exception handling re-written to properly catch and re-throw exceptions on subsequent calls to main thread methods.<br />
+      Removed *LoggerImplementation classes.<br />
+      MetricAggregateContainer* classes made nested classes of MetricAggregateLogger.<br />
+      MetricEventInstance* classes made nested classes of MetricLoggerBuffer.<br />
+      MetricTotalContainer* classes made nested of MetricLoggerStorer.<br />
+      IMetricLogger interface moved to ApplicationMetrics namespace.<br />
+      General re-write of and improvement to unit tests.<br />
+    </td>
+  </tr>
+  <tr>
     <td valign="top">2.0.0</td>
     <td>
       Migrated to .NET Standard.<br />

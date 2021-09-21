@@ -27,7 +27,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
     /// <summary>
     /// Unit tests for class ApplicationMetrics.MetricLoggers.ConsoleMetricLogger.
     /// </summary>
-    class ConsoleMetricLoggerTests
+    public class ConsoleMetricLoggerTests
     {
         /* 
          * NOTE: As most of the work of the ConsoleMetricLogger class is done by a worker thread, many of the tests in this class rely on checking the behavior of the worker thread.
@@ -38,8 +38,8 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         private IConsole mockConsole;
         private IDateTime mockDateTime;
         private IStopwatch mockStopWatch;
-        private ExceptionStorer exceptionStorer;
         private ManualResetEvent workerThreadLoopIterationCompleteSignal;
+        private LoopingWorkerThreadBufferProcessor bufferProcessor;
         private ConsoleMetricLogger testConsoleMetricLogger;
         private const string separatorString = ": ";
 
@@ -49,19 +49,21 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockConsole = Substitute.For<IConsole>();
             mockDateTime = Substitute.For<IDateTime>();
             mockStopWatch = Substitute.For<IStopwatch>();
-            exceptionStorer = new ExceptionStorer();
             workerThreadLoopIterationCompleteSignal = new ManualResetEvent(false);
-            testConsoleMetricLogger = new ConsoleMetricLogger(new LoopingWorkerThreadBufferProcessor(10, workerThreadLoopIterationCompleteSignal), true, mockConsole, mockDateTime, mockStopWatch, exceptionStorer);
+            bufferProcessor = new LoopingWorkerThreadBufferProcessor(10, workerThreadLoopIterationCompleteSignal, 1);
+            testConsoleMetricLogger = new ConsoleMetricLogger(bufferProcessor, true, mockConsole, mockDateTime, mockStopWatch);
         }
 
         [TearDown]
         protected void TearDown()
         {
+            bufferProcessor.Dispose();
+            testConsoleMetricLogger.Dispose();
             workerThreadLoopIterationCompleteSignal.Dispose();
         }
 
         [Test]
-        public void LogCountMetricTotalSuccessTest()
+        public void Increment()
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
             (
@@ -84,7 +86,6 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
 
-            Assert.IsNull(exceptionStorer.StoredException);
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(3).ElapsedTicks;
             throwAway1 = mockDateTime.Received(1).Now;
@@ -94,7 +95,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
-        public void LogAmounMetricTotalSuccessTest()
+        public void Add()
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
             (
@@ -117,7 +118,6 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
 
-            Assert.IsNull(exceptionStorer.StoredException);
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(3).ElapsedTicks;
             throwAway1 = mockDateTime.Received(1).Now;
@@ -127,7 +127,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
-        public void LogStatusMetricValueSuccessTest()
+        public void Set()
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
             (
@@ -150,7 +150,6 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
 
-            Assert.IsNull(exceptionStorer.StoredException);
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(3).ElapsedTicks;
             throwAway1 = mockDateTime.Received(1).Now;
@@ -160,7 +159,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
-        public void LogIntervalMetricTotalSuccessTest()
+        public void BeginEnd()
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
             (
@@ -189,7 +188,6 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
 
-            Assert.IsNull(exceptionStorer.StoredException);
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(6).ElapsedTicks;
             throwAway1 = mockDateTime.Received(1).Now;
@@ -199,7 +197,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
-        public void LogCountOverTimeUnitAggregateSuccessTest()
+        public void LogCountOverTimeUnitAggregate()
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
             (
@@ -231,7 +229,6 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
 
-            Assert.IsNull(exceptionStorer.StoredException);
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(5).ElapsedTicks;
             var throwAway3 = mockStopWatch.Received(1).ElapsedMilliseconds;
@@ -242,7 +239,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
-        public void LogCountOverTimeUnitAggregateNoInstancesSuccessTest()
+        public void LogCountOverTimeUnitAggregate_NoInstances()
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
             (
@@ -263,7 +260,6 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             // Wait a few more milliseconds so that any unexpected method calls after the signal are caught
             Thread.Sleep(50);
 
-            Assert.IsNull(exceptionStorer.StoredException);
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(1).ElapsedMilliseconds;
             throwAway1 = mockDateTime.Received(1).Now;
@@ -272,7 +268,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
-        public void LogAmountOverCountAggregateSuccessTest()
+        public void LogAmountOverCountAggregate()
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
             (
@@ -306,7 +302,6 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
 
-            Assert.IsNull(exceptionStorer.StoredException);
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(8).ElapsedTicks;
             throwAway1 = mockDateTime.Received(1).Now;
@@ -317,7 +312,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
-        public void LogAmountOverCountAggregateNoInstancesSuccessTest()
+        public void LogAmountOverCountAggregate_NoInstances()
         {
             // Tests defining an amount over count aggregate, where no instances of the underlying count metric have been logged
 
@@ -347,7 +342,6 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             // Wait a few more milliseconds so that any unexpected method calls after the signal are caught
             Thread.Sleep(50);
 
-            Assert.IsNull(exceptionStorer.StoredException);
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(4).ElapsedTicks;
             throwAway1 = mockDateTime.Received(1).Now;
@@ -356,7 +350,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
-        public void LogAmountOverTimeUnitAggregateSuccessTest()
+        public void LogAmountOverTimeUnitAggregate()
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
             (
@@ -390,7 +384,6 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
 
-            Assert.IsNull(exceptionStorer.StoredException);
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(5).ElapsedTicks;
             var throwAway3 = mockStopWatch.Received(1).ElapsedMilliseconds;
@@ -401,7 +394,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
-        public void LogAmountOverTimeUnitAggregateNoInstancesSuccessTest()
+        public void LogAmountOverTimeUnitAggregate_NoInstances()
         {
             // Tests defining an amount over time unit aggregate, where no instances of the underlying amount metric have been logged
 
@@ -424,7 +417,6 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             // Wait a few more milliseconds so that any unexpected method calls after the signal are caught
             Thread.Sleep(50);
 
-            Assert.IsNull(exceptionStorer.StoredException);
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(1).ElapsedMilliseconds;
             throwAway1 = mockDateTime.Received(1).Now;
@@ -433,7 +425,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
-        public void LogAmountOverAmountAggregateSuccessTest()
+        public void LogAmountOverAmountAggregate()
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
             (
@@ -464,7 +456,6 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
 
-            Assert.IsNull(exceptionStorer.StoredException);
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(4).ElapsedTicks;
             throwAway1 = mockDateTime.Received(1).Now;
@@ -475,7 +466,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
-        public void LogAmountOverAmountAggregateNoNumeratorInstancesSuccessTest()
+        public void LogAmountOverAmountAggregate_NoNumeratorInstances()
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
             (
@@ -497,7 +488,6 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
 
-            Assert.IsNull(exceptionStorer.StoredException);
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(2).ElapsedTicks;
             throwAway1 = mockDateTime.Received(1).Now;
@@ -506,7 +496,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
-        public void LogAmountOverAmountAggregateNoDenominatorInstancesSuccessTest()
+        public void LogAmountOverAmountAggregate_NoDenominatorInstances()
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
             (
@@ -530,7 +520,6 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             // Wait a few more milliseconds so that any unexpected method calls after the signal are caught
             Thread.Sleep(50);
 
-            Assert.IsNull(exceptionStorer.StoredException);
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(2).ElapsedTicks;
             throwAway1 = mockDateTime.Received(1).Now;
@@ -539,7 +528,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
-        public void LogIntervalOverCountAggregateSuccessTest()
+        public void LogIntervalOverCountAggregate()
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
             (
@@ -569,7 +558,6 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
 
-            Assert.IsNull(exceptionStorer.StoredException);
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(6).ElapsedTicks;
             throwAway1 = mockDateTime.Received(1).Now;
@@ -580,7 +568,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
-        public void LogIntervalOverCountAggregateNoInstancesSuccessTest()
+        public void LogIntervalOverCountAggregate_NoInstances()
         {
             // Tests defining an interval over count aggregate, where no instances of the underlying count metric have been logged
 
@@ -610,7 +598,6 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             // Wait a few more milliseconds so that any unexpected method calls after the signal are caught
             Thread.Sleep(50);
 
-            Assert.IsNull(exceptionStorer.StoredException);
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(4).ElapsedTicks;
             throwAway1 = mockDateTime.Received(1).Now;
@@ -619,7 +606,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
-        public void LogIntervalOverTotalRunTimeAggregateSuccessTest()
+        public void LogIntervalOverTotalRunTimeAggregate()
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
             (
@@ -650,7 +637,6 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
 
-            Assert.IsNull(exceptionStorer.StoredException);
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(4).ElapsedTicks;
             var throwAway3 = mockStopWatch.Received(1).ElapsedMilliseconds;
@@ -661,7 +647,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
-        public void LogIntervalOverTotalRunTimeAggregateZeroElapsedTimeSuccessTest()
+        public void LogIntervalOverTotalRunTimeAggregate_ZeroElapsedTime()
         {
             // Tests that an aggregate is not logged when no time has elapsed
 
@@ -694,7 +680,6 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
 
-            Assert.IsNull(exceptionStorer.StoredException);
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(4).ElapsedTicks;
             var throwAway3 = mockStopWatch.Received(1).ElapsedMilliseconds;

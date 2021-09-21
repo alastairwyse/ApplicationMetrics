@@ -16,6 +16,7 @@
 
 using System;
 using System.Text;
+using System.Collections.Generic;
 using StandardAbstraction;
 
 namespace ApplicationMetrics.MetricLoggers
@@ -23,39 +24,12 @@ namespace ApplicationMetrics.MetricLoggers
     /// <summary>
     /// Writes metric and instrumentation events for an application to a file.
     /// </summary>
-    public class FileMetricLogger : IMetricLogger, IDisposable
+    public class FileMetricLogger : MetricLoggerBuffer, IDisposable
     {
-        /// <summary>Indicates whether the object has been disposed.</summary>
-        protected bool disposed = false;
-        private FileMetricLoggerImplementation loggerImplementation;
-
-        /// <summary>
-        /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.FileMetricLogger class.
-        /// </summary>
-        /// <remarks>This constructor defaults to using the LoopingWorkerThreadBufferProcessor as the buffer processing strategy, and is maintained for backwards compatibility.</remarks>
-        /// <param name="separatorCharacter">The character to use to separate fields (e.g. date/time stamp, metric name) in the file.</param>
-        /// <param name="filePath">The full path of the file to write the metric events to.</param>
-        /// <param name="dequeueOperationLoopInterval">The time to wait (in milliseconds) between iterations of the worker thread which dequeues metric events and writes them to the file.</param>
-        /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).</param>
-        public FileMetricLogger(char separatorCharacter, string filePath, int dequeueOperationLoopInterval, bool intervalMetricChecking)
-        {
-            loggerImplementation = new FileMetricLoggerImplementation(separatorCharacter, filePath, new LoopingWorkerThreadBufferProcessor(dequeueOperationLoopInterval), intervalMetricChecking);
-        }
-
-        /// <summary>
-        /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.FileMetricLogger class.
-        /// </summary>
-        /// <remarks>This constructor defaults to using the LoopingWorkerThreadBufferProcessor as the buffer processing strategy, and is maintained for backwards compatibility.</remarks>
-        /// <param name="separatorCharacter">The character to use to separate fields (e.g. date/time stamp, metric name) in the file.</param>
-        /// <param name="filePath">The full path of the file to write the metric events to.</param>
-        /// <param name="dequeueOperationLoopInterval">The time to wait (in milliseconds) between iterations of the worker thread which dequeues metric events and writes them to the file.</param>
-        /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).</param>
-        /// <param name="appendToFile">Whether to append to an existing file (if it exists) or overwrite.  A value of true causes appending.</param>
-        /// <param name="fileEncoding">The character encoding to use in the file.</param>
-        public FileMetricLogger(char separatorCharacter, string filePath, int dequeueOperationLoopInterval, bool intervalMetricChecking, bool appendToFile, Encoding fileEncoding)
-        {
-            loggerImplementation = new FileMetricLoggerImplementation(separatorCharacter, filePath, new LoopingWorkerThreadBufferProcessor(dequeueOperationLoopInterval), intervalMetricChecking, appendToFile, fileEncoding);
-        }
+        private const string dateTimeFormat = "yyyy-MM-dd HH:mm:ss.fff";
+        private char separatorCharacter;
+        private IStreamWriter streamWriter;
+        private Encoding fileEncoding = Encoding.UTF8;
 
         /// <summary>
         /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.FileMetricLogger class.
@@ -65,12 +39,14 @@ namespace ApplicationMetrics.MetricLoggers
         /// <param name="bufferProcessingStrategy">Object which implements a processing strategy for the buffers (queues).</param>
         /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).</param>
         public FileMetricLogger(char separatorCharacter, string filePath, IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking)
+            : base(bufferProcessingStrategy, intervalMetricChecking)
         {
-            loggerImplementation = new FileMetricLoggerImplementation(separatorCharacter, filePath, bufferProcessingStrategy, intervalMetricChecking);
+            this.separatorCharacter = separatorCharacter;
+            streamWriter = new StreamWriter(filePath, false, fileEncoding);
         }
 
         /// <summary>
-        /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.FileMetricLogger class.
+        /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.FileMetricLoggerImplementation class.
         /// </summary>
         /// <param name="separatorCharacter">The character to use to separate fields (e.g. date/time stamp, metric name) in the file.</param>
         /// <param name="filePath">The full path of the file to write the metric events to.</param>
@@ -79,12 +55,14 @@ namespace ApplicationMetrics.MetricLoggers
         /// <param name="appendToFile">Whether to append to an existing file (if it exists) or overwrite.  A value of true causes appending.</param>
         /// <param name="fileEncoding">The character encoding to use in the file.</param>
         public FileMetricLogger(char separatorCharacter, string filePath, IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking, bool appendToFile, Encoding fileEncoding)
+            : base(bufferProcessingStrategy, intervalMetricChecking)
         {
-            loggerImplementation = new FileMetricLoggerImplementation(separatorCharacter, filePath, bufferProcessingStrategy, intervalMetricChecking, appendToFile, fileEncoding);
+            this.separatorCharacter = separatorCharacter;
+            streamWriter = new StreamWriter(filePath, appendToFile, fileEncoding);
         }
 
         /// <summary>
-        /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.FileMetricLogger class.  Note this is an additional constructor to facilitate unit tests, and should not be used to instantiate the class under normal conditions.
+        /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.FileMetricLoggerImplementation class.  Note this is an additional constructor to facilitate unit tests, and should not be used to instantiate the class under normal conditions.
         /// </summary>
         /// <param name="separatorCharacter">The character to use to separate fields (e.g. date/time stamp, metric name) in the file.</param>
         /// <param name="bufferProcessingStrategy">Object which implements a processing strategy for the buffers (queues).</param>
@@ -92,28 +70,11 @@ namespace ApplicationMetrics.MetricLoggers
         /// <param name="streamWriter">A test (mock) stream writer.</param>
         /// <param name="dateTime">A test (mock) DateTime object.</param>
         /// <param name="stopWatch">A test (mock) Stopwatch object.</param>
-        /// <param name="exceptionHandler">A test (mock) exception handler object.</param>
-        public FileMetricLogger(char separatorCharacter, IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking, IStreamWriter streamWriter, IDateTime dateTime, IStopwatch stopWatch, IExceptionHandler exceptionHandler)
+        public FileMetricLogger(char separatorCharacter, IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking, IStreamWriter streamWriter, IDateTime dateTime, IStopwatch stopWatch)
+            : base(bufferProcessingStrategy, intervalMetricChecking, dateTime, stopWatch)
         {
-            loggerImplementation = new FileMetricLoggerImplementation(separatorCharacter, bufferProcessingStrategy, intervalMetricChecking, streamWriter, dateTime, stopWatch, exceptionHandler);
-        }
-
-        /// <summary>
-        /// Starts a worker thread which calls methods to dequeue metric events and write them to the file.
-        /// </summary>
-        /// <remarks>This method is maintained on this class for backwards compatibility, as it is now available on interface IBufferProcessingStrategy.</remarks>
-        public void Start()
-        {
-            loggerImplementation.Start();
-        }
-
-        /// <summary>
-        /// Stops the worker thread.
-        /// </summary>
-        /// <remarks>This method is maintained on this class for backwards compatibility, as it is now available on interface IBufferProcessingStrategy.</remarks>
-        public void Stop()
-        {
-            loggerImplementation.Stop();
+            this.separatorCharacter = separatorCharacter;
+            this.streamWriter = streamWriter;
         }
 
         /// <summary>
@@ -121,55 +82,114 @@ namespace ApplicationMetrics.MetricLoggers
         /// </summary>
         public void Close()
         {
-            loggerImplementation.Close();
+            streamWriter.Close();
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Increment(ApplicationMetrics.CountMetric)"]/*'/>
-        public void Increment(CountMetric countMetric)
-        {
-            loggerImplementation.Increment(countMetric);
-        }
-
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Add(ApplicationMetrics.AmountMetric)"]/*'/>
-        public void Add(AmountMetric amountMetric)
-        {
-            loggerImplementation.Add(amountMetric);
-        }
-
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Set(ApplicationMetrics.StatusMetric)"]/*'/>
-        public void Set(StatusMetric statusMetric)
-        {
-            loggerImplementation.Set(statusMetric);
-        }
-
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Begin(ApplicationMetrics.IntervalMetric)"]/*'/>
-        public void Begin(IntervalMetric intervalMetric)
-        {
-            loggerImplementation.Begin(intervalMetric);
-        }
-
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.End(ApplicationMetrics.IntervalMetric)"]/*'/>
-        public void End(IntervalMetric intervalMetric)
-        {
-            loggerImplementation.End(intervalMetric);
-        }
-
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.CancelBegin(ApplicationMetrics.IntervalMetric)"]/*'/>
-        public void CancelBegin(IntervalMetric intervalMetric)
-        {
-            loggerImplementation.CancelBegin(intervalMetric);
-        }
-
-        #region Finalize / Dispose Methods
+        #region Base Class Method Implementations
 
         /// <summary>
-        /// Releases the unmanaged resources used by the FileMetricLogger.
+        /// Writes logged count metric events to the file.
         /// </summary>
-        public void Dispose()
+        /// <param name="countMetricEvents">The count metric events to write.</param>
+        protected override void ProcessCountMetricEvents(Queue<CountMetricEventInstance> countMetricEvents)
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
+            while (countMetricEvents.Count > 0)
+            {
+                CountMetricEventInstance currentCountMetricEventInstance = countMetricEvents.Dequeue();
+                StringBuilder stringBuilder = InitializeStringBuilder(currentCountMetricEventInstance.EventTime.ToLocalTime());
+                stringBuilder.Append(currentCountMetricEventInstance.Metric.Name);
+                streamWriter.WriteLine(stringBuilder.ToString());
+                streamWriter.Flush();
+            }
         }
+
+        /// <summary>
+        /// Writes logged amount metric events to the file.
+        /// </summary>
+        /// <param name="amountMetricEvents">The amount metric events to write.</param>
+        protected override void ProcessAmountMetricEvents(Queue<AmountMetricEventInstance> amountMetricEvents)
+        {
+            while (amountMetricEvents.Count > 0)
+            {
+                AmountMetricEventInstance currentAmountMetricEventInstance = amountMetricEvents.Dequeue();
+                StringBuilder stringBuilder = InitializeStringBuilder(currentAmountMetricEventInstance.EventTime.ToLocalTime());
+                stringBuilder.Append(currentAmountMetricEventInstance.Metric.Name);
+                AppendSeparatorCharacter(stringBuilder);
+                stringBuilder.Append(currentAmountMetricEventInstance.Metric.Amount);
+                streamWriter.WriteLine(stringBuilder.ToString());
+                streamWriter.Flush();
+            }
+        }
+
+        /// <summary>
+        /// Writes logged status metric events to the file.
+        /// </summary>
+        /// <param name="statusMetricEvents">The status metric events to write.</param>
+        protected override void ProcessStatusMetricEvents(Queue<StatusMetricEventInstance> statusMetricEvents)
+        {
+            while (statusMetricEvents.Count > 0)
+            {
+                StatusMetricEventInstance currentStatustMetricEventInstance = statusMetricEvents.Dequeue();
+                StringBuilder stringBuilder = InitializeStringBuilder(currentStatustMetricEventInstance.EventTime.ToLocalTime());
+                stringBuilder.Append(currentStatustMetricEventInstance.Metric.Name);
+                AppendSeparatorCharacter(stringBuilder);
+                stringBuilder.Append(currentStatustMetricEventInstance.Metric.Value);
+                streamWriter.WriteLine(stringBuilder.ToString());
+                streamWriter.Flush();
+            }
+        }
+
+        /// <summary>
+        /// Writes interval count metric events to the file.
+        /// </summary>
+        /// <param name="intervalMetricEventsAndDurations">The interval metric events to write.</param>
+        protected override void ProcessIntervalMetricEvents(Queue<Tuple<IntervalMetricEventInstance, Int64>> intervalMetricEventsAndDurations)
+        {
+            while (intervalMetricEventsAndDurations.Count > 0)
+            {
+                Tuple<IntervalMetricEventInstance, Int64> currentIntervalMetricEventAndDuration = intervalMetricEventsAndDurations.Dequeue();
+                IntervalMetricEventInstance currentIntervalMetricEvent = currentIntervalMetricEventAndDuration.Item1;
+                Int64 currentDuration = currentIntervalMetricEventAndDuration.Item2;
+                StringBuilder stringBuilder = InitializeStringBuilder(currentIntervalMetricEvent.EventTime.ToLocalTime());
+                stringBuilder.Append(currentIntervalMetricEvent.Metric.Name);
+                AppendSeparatorCharacter(stringBuilder);
+                stringBuilder.Append(currentDuration);
+                streamWriter.WriteLine(stringBuilder.ToString());
+                streamWriter.Flush();
+            }
+        }
+
+        #endregion
+
+        #region Private/Protected Methods
+
+        /// <summary>
+        /// Creates and returns a StringBuilder class, with the specified timestamp written to it.
+        /// </summary>
+        /// <param name="timeStamp">The timestamp to write to the StringBuilder.</param>
+        /// <returns>The initialized string builder.</returns>
+        private StringBuilder InitializeStringBuilder(System.DateTime timeStamp)
+        {
+            StringBuilder returnStringBuilder = new StringBuilder();
+            returnStringBuilder.Append(timeStamp.ToString(dateTimeFormat));
+            AppendSeparatorCharacter(returnStringBuilder);
+            return returnStringBuilder;
+        }
+
+        /// <summary>
+        /// Appends the separator character to a StringBuilder object.
+        /// </summary>
+        /// <param name="stringBuilder">The StringBuilder to append the separator character to.</param>
+        private void AppendSeparatorCharacter(StringBuilder stringBuilder)
+        {
+            stringBuilder.Append(" ");
+            stringBuilder.Append(separatorCharacter);
+            stringBuilder.Append(" ");
+        }
+
+        #endregion
+
+        #region Finalize / Dispose Methods
 
         #pragma warning disable 1591
         ~FileMetricLogger()
@@ -182,24 +202,29 @@ namespace ApplicationMetrics.MetricLoggers
         /// Provides a method to free unmanaged resources used by this class.
         /// </summary>
         /// <param name="disposing">Whether the method is being called as part of an explicit Dispose routine, and hence whether managed resources should also be freed.</param>
-        protected virtual void Dispose(bool disposing)
+        protected override void Dispose(bool disposing)
         {
             if (!disposed)
             {
-                if (disposing)
+                try
                 {
-                    // Free other state (managed objects).
-                    if (loggerImplementation != null)
+                    if (disposing)
                     {
-                        loggerImplementation.Dispose();
+                        // Free other state (managed objects).
+                        if (streamWriter != null)
+                        {
+                            streamWriter.Dispose();
+                            streamWriter = null;
+                        }
                     }
+                    // Free your own state (unmanaged objects).
+
+                    // Set large fields to null.
                 }
-                // Free your own state (unmanaged objects).
-
-                // Set large fields to null.
-                loggerImplementation = null;
-
-                disposed = true;
+                finally
+                {
+                    base.Dispose(disposing);
+                }
             }
         }
 

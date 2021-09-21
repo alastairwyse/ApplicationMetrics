@@ -21,7 +21,7 @@ namespace ApplicationMetrics.MetricLoggers
     /// <summary>
     /// Contains common utility methods used in ApplicationMetrics.MetricLoggers.
     /// </summary>
-    class Utilities
+    public class Utilities
     {
         /// <summary>
         /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.Utilities class.
@@ -35,7 +35,7 @@ namespace ApplicationMetrics.MetricLoggers
         /// </summary>
         /// <param name="timeUnit">The time unit to convert.</param>
         /// <returns>The number of milliseconds.</returns>
-        public int ConvertTimeUnitToMilliSeconds(TimeUnit timeUnit)
+        public Int32 ConvertTimeUnitToMilliSeconds(TimeUnit timeUnit)
         {
             switch (timeUnit)
             {

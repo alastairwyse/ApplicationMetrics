@@ -24,7 +24,7 @@ namespace ApplicationMetrics.MetricLoggers
     /// Base class which supports buffering and storing of metric events, and provides a base framework for classes which log aggregates of metric events.
     /// </summary>
     /// <remarks>Derived classes must implement methods which log defined metric aggregates (e.g. LogCountOverTimeUnitAggregate()).  These methods are called from a worker thread after dequeueing, totalling, and logging the base metric events.</remarks>
-    abstract class MetricAggregateLogger : MetricLoggerStorer, IMetricAggregateLogger
+    public abstract class MetricAggregateLogger : MetricLoggerStorer, IMetricAggregateLogger
     {
         // Containers for metric aggregates
         /// <summary>Container for aggregates which represent the number of occurrences of a count metric within the specified time unit</summary>
@@ -62,9 +62,8 @@ namespace ApplicationMetrics.MetricLoggers
         /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).</param>
         /// <param name="dateTime">A test (mock) DateTime object.</param>
         /// <param name="stopWatch">A test (mock) Stopwatch object.</param>
-        /// <param name="exceptionHandler">A test (mock) exception handler object.</param>
-        protected MetricAggregateLogger(IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking, IDateTime dateTime, IStopwatch stopWatch, IExceptionHandler exceptionHandler)
-            : base(bufferProcessingStrategy, intervalMetricChecking, dateTime, stopWatch, exceptionHandler)
+        protected MetricAggregateLogger(IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking, IDateTime dateTime, IStopwatch stopWatch)
+            : base(bufferProcessingStrategy, intervalMetricChecking, dateTime, stopWatch)
         {
             InitialisePrivateMembers();
         }
@@ -128,7 +127,7 @@ namespace ApplicationMetrics.MetricLoggers
         /// <param name="metricAggregate">The metric aggregate to log.</param>
         /// <param name="totalInstances">The number of occurrences of the count metric.</param>
         /// <param name="totalElapsedTimeUnits">The total elapsed time units.</param>
-        protected abstract void LogCountOverTimeUnitAggregate(MetricAggregateContainer<CountMetric> metricAggregate, long totalInstances, long totalElapsedTimeUnits);
+        protected abstract void LogCountOverTimeUnitAggregate(MetricAggregateContainer<CountMetric> metricAggregate, Int64 totalInstances, Int64 totalElapsedTimeUnits);
 
         /// <summary>
         /// Logs a metric aggregate representing the total of an amount metric per occurrence of a count metric.
@@ -136,7 +135,7 @@ namespace ApplicationMetrics.MetricLoggers
         /// <param name="metricAggregate">The metric aggregate to log.</param>
         /// <param name="totalAmount">The total of the amount metric.</param>
         /// <param name="totalInstances">The number of occurrences of the count metric.</param>
-        protected abstract void LogAmountOverCountAggregate(MetricAggregateContainer<AmountMetric, CountMetric> metricAggregate, long totalAmount, long totalInstances);
+        protected abstract void LogAmountOverCountAggregate(MetricAggregateContainer<AmountMetric, CountMetric> metricAggregate, Int64 totalAmount, Int64 totalInstances);
 
         /// <summary>
         /// Logs a metric aggregate respresenting the total of an amount metric within the specified time unit.
@@ -144,7 +143,7 @@ namespace ApplicationMetrics.MetricLoggers
         /// <param name="metricAggregate">The metric aggregate to log.</param>
         /// <param name="totalAmount">The total of the amount metric.</param>
         /// <param name="totalElapsedTimeUnits">The total elapsed time units.</param>
-        protected abstract void LogAmountOverTimeUnitAggregate(MetricAggregateContainer<AmountMetric> metricAggregate, long totalAmount, long totalElapsedTimeUnits);
+        protected abstract void LogAmountOverTimeUnitAggregate(MetricAggregateContainer<AmountMetric> metricAggregate, Int64 totalAmount, Int64 totalElapsedTimeUnits);
 
         /// <summary>
         /// Logs a metric aggregate representing the total of an amount metric divided by the total of another amount metric.
@@ -152,7 +151,7 @@ namespace ApplicationMetrics.MetricLoggers
         /// <param name="metricAggregate">The metric aggregate to log.</param>
         /// <param name="numeratorTotal">The total of the numerator amount metric.</param>
         /// <param name="denominatorTotal">The total of the denominator amount metric.</param>
-        protected abstract void LogAmountOverAmountAggregate(MetricAggregateContainer<AmountMetric, AmountMetric> metricAggregate, long numeratorTotal, long denominatorTotal);
+        protected abstract void LogAmountOverAmountAggregate(MetricAggregateContainer<AmountMetric, AmountMetric> metricAggregate, Int64 numeratorTotal, Int64 denominatorTotal);
 
         /// <summary>
         /// Logs a metric aggregate representing the total of an interval metric per occurrence of a count metric.
@@ -160,7 +159,7 @@ namespace ApplicationMetrics.MetricLoggers
         /// <param name="metricAggregate">The metric aggregate to log.</param>
         /// <param name="totalInterval">The total of the interval metric.</param>
         /// <param name="totalInstances">The number of occurrences of the count metric.</param>
-        protected abstract void LogIntervalOverCountAggregate(MetricAggregateContainer<IntervalMetric, CountMetric> metricAggregate, long totalInterval, long totalInstances);
+        protected abstract void LogIntervalOverCountAggregate(MetricAggregateContainer<IntervalMetric, CountMetric> metricAggregate, Int64 totalInterval, Int64 totalInstances);
 
         /// <summary>
         /// Logs a metric aggregate representing the total of an interval metric as a fraction of the total runtime of the logger.
@@ -168,7 +167,7 @@ namespace ApplicationMetrics.MetricLoggers
         /// <param name="metricAggregate">The metric aggregate to log.</param>
         /// <param name="totalInterval">The total of the interval metric.</param>
         /// <param name="totalRunTime">The total run time of the logger since starting in milliseconds.</param>
-        protected abstract void LogIntervalOverTotalRunTimeAggregate(MetricAggregateContainer<IntervalMetric> metricAggregate, long totalInterval, long totalRunTime);
+        protected abstract void LogIntervalOverTotalRunTimeAggregate(MetricAggregateContainer<IntervalMetric> metricAggregate, Int64 totalInterval, Int64 totalRunTime);
 
         #endregion
 
@@ -214,7 +213,7 @@ namespace ApplicationMetrics.MetricLoggers
             foreach (MetricAggregateContainer<CountMetric> currentAggregate in countOverTimeUnitAggregateDefinitions)
             {
                 // Calculate the value
-                long totalInstances;
+                Int64 totalInstances;
                 if (countMetricTotals.ContainsKey(currentAggregate.NumeratorMetricType) == true)
                 {
                     totalInstances = countMetricTotals[currentAggregate.NumeratorMetricType].TotalCount;
@@ -237,7 +236,7 @@ namespace ApplicationMetrics.MetricLoggers
         {
             foreach (MetricAggregateContainer<AmountMetric, CountMetric> currentAggregate in amountOverCountAggregateDefinitions)
             {
-                long totalAmount;
+                Int64 totalAmount;
                 if (amountMetricTotals.ContainsKey(currentAggregate.NumeratorMetricType) == true)
                 {
                     totalAmount = amountMetricTotals[currentAggregate.NumeratorMetricType].Total;
@@ -247,7 +246,7 @@ namespace ApplicationMetrics.MetricLoggers
                     totalAmount = 0;
                 }
 
-                long totalInstances;
+                Int64 totalInstances;
                 if (countMetricTotals.ContainsKey(currentAggregate.DenominatorMetricType) == true)
                 {
                     totalInstances = countMetricTotals[currentAggregate.DenominatorMetricType].TotalCount;
@@ -269,7 +268,7 @@ namespace ApplicationMetrics.MetricLoggers
             foreach (MetricAggregateContainer<AmountMetric> currentAggregate in amountOverTimeUnitAggregateDefinitions)
             {
                 // Calculate the total
-                long totalAmount;
+                Int64 totalAmount;
                 if (amountMetricTotals.ContainsKey(currentAggregate.NumeratorMetricType) == true)
                 {
                     totalAmount = amountMetricTotals[currentAggregate.NumeratorMetricType].Total;
@@ -292,7 +291,7 @@ namespace ApplicationMetrics.MetricLoggers
         {
             foreach (MetricAggregateContainer<AmountMetric, AmountMetric> currentAggregate in amountOverAmountAggregateDefinitions)
             {
-                long numeratorTotal;
+                Int64 numeratorTotal;
                 if (amountMetricTotals.ContainsKey(currentAggregate.NumeratorMetricType) == true)
                 {
                     numeratorTotal = amountMetricTotals[currentAggregate.NumeratorMetricType].Total;
@@ -302,7 +301,7 @@ namespace ApplicationMetrics.MetricLoggers
                     numeratorTotal = 0;
                 }
 
-                long denominatorTotal;
+                Int64 denominatorTotal;
                 if (amountMetricTotals.ContainsKey(currentAggregate.DenominatorMetricType) == true)
                 {
                     denominatorTotal = amountMetricTotals[currentAggregate.DenominatorMetricType].Total;
@@ -323,7 +322,7 @@ namespace ApplicationMetrics.MetricLoggers
         {
             foreach (MetricAggregateContainer<IntervalMetric, CountMetric> currentAggregate in intervalOverAmountAggregateDefinitions)
             {
-                long totalInterval;
+                Int64 totalInterval;
                 if (intervalMetricTotals.ContainsKey(currentAggregate.NumeratorMetricType) == true)
                 {
                     totalInterval = intervalMetricTotals[currentAggregate.NumeratorMetricType].Total;
@@ -333,7 +332,7 @@ namespace ApplicationMetrics.MetricLoggers
                     totalInterval = 0;
                 }
 
-                long totalInstances;
+                Int64 totalInstances;
                 if (countMetricTotals.ContainsKey(currentAggregate.DenominatorMetricType) == true)
                 {
                     totalInstances = countMetricTotals[currentAggregate.DenominatorMetricType].TotalCount;
@@ -354,7 +353,7 @@ namespace ApplicationMetrics.MetricLoggers
         {
             foreach (MetricAggregateContainer<IntervalMetric> currentAggregate in intervalOverTotalRunTimeAggregateDefinitions)
             {
-                long totalInterval;
+                Int64 totalInterval;
                 if (intervalMetricTotals.ContainsKey(currentAggregate.NumeratorMetricType) == true)
                 {
                     totalInterval = intervalMetricTotals[currentAggregate.NumeratorMetricType].Total;
@@ -422,6 +421,155 @@ namespace ApplicationMetrics.MetricLoggers
             if (exists == true)
             {
                 throw new Exception("Metric aggregate with name '" + name + "' has already been defined.");
+            }
+        }
+
+        #endregion
+
+        #region Nested Classes
+
+        /// <summary>
+        /// Base class for metric aggregate containers containing common properties.
+        /// </summary>
+        /// <typeparam name="TNumerator">The type representing the numerator of the aggregate.</typeparam>
+        protected class MetricAggregateContainerBase<TNumerator>
+        {
+            /// <summary>The metric representing the numerator of the aggregate.</summary>
+            protected TNumerator numeratorMetric;
+            /// <summary>The name of the metric aggregate.</summary>
+            protected string name;
+            /// <summary>A description of the metric aggregate, explaining what it measures and/or represents.</summary>
+            protected string description;
+
+            /// <summary>
+            /// The type of the numerator of the metric aggregate.
+            /// </summary>
+            public Type NumeratorMetricType
+            {
+                get
+                {
+                    return numeratorMetric.GetType();
+                }
+            }
+
+            /// <summary>
+            /// The name of the metric aggregate.
+            /// </summary>
+            public string Name
+            {
+                get
+                {
+                    return name;
+                }
+            }
+
+            /// <summary>
+            /// A description of the metric aggregate, explaining what it measures and/or represents.
+            /// </summary>
+            public string Description
+            {
+                get
+                {
+                    return description;
+                }
+            }
+
+            /// <summary>
+            /// Initialises a new instance of the ApplicationMetrics.MetricAggregateLogger+MetricAggregateContainerBase class.
+            /// </summary>
+            /// <param name="numeratorMetric">The metric which is the numerator of the aggregate.</param>
+            /// <param name="name">The name of the metric aggregate.</param>
+            /// <param name="description">A description of the metric aggregate, explaining what it measures and/or represents.</param>
+            protected MetricAggregateContainerBase(TNumerator numeratorMetric, string name, string description)
+            {
+                this.numeratorMetric = numeratorMetric;
+
+                if (name.Trim() != "")
+                {
+                    this.name = name;
+                }
+                else
+                {
+                    throw new ArgumentException("Argument 'name' cannot be blank.", "name");
+                }
+
+                if (description.Trim() != "")
+                {
+                    this.description = description;
+                }
+                else
+                {
+                    throw new ArgumentException("Argument 'description' cannot be blank.", "description");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Container class which stores definitions of aggregates of metrics.
+        /// </summary>
+        /// <typeparam name="TNumerator">The type of the numerator of the metric aggregate.</typeparam>
+        /// <typeparam name="TDenominator">The type of the denominator of the metric aggregate.</typeparam>
+        protected class MetricAggregateContainer<TNumerator, TDenominator> : MetricAggregateContainerBase<TNumerator>
+        {
+            /// <summary>The metric representing the denominator of the aggregate.</summary>
+            protected TDenominator denominatorMetric;
+
+            /// <summary>
+            /// The type of the denominator of the metric aggregate.
+            /// </summary>
+            public Type DenominatorMetricType
+            {
+                get
+                {
+                    return denominatorMetric.GetType();
+                }
+            }
+
+            /// <summary>
+            /// Initialises a new instance of the ApplicationMetrics.MetricAggregateLogger+MetricAggregateContainer class.
+            /// </summary>
+            /// <param name="numeratorMetric">The metric which is the numerator of the aggregate.</param>
+            /// <param name="denominatorMetric">The metric which is the denominator of the aggregate.</param>
+            /// <param name="name">The name of the metric aggregate.</param>
+            /// <param name="description">A description of the metric aggregate, explaining what it measures and/or represents.</param>
+            public MetricAggregateContainer(TNumerator numeratorMetric, TDenominator denominatorMetric, string name, string description)
+                : base(numeratorMetric, name, description)
+            {
+                this.denominatorMetric = denominatorMetric;
+            }
+        }
+
+        /// <summary>
+        /// Container class which stores definitions of aggregates of metrics where the denominator of the metric is a unit of time.
+        /// </summary>
+        /// <typeparam name="TNumerator">The type of the numerator of the metric aggregate.</typeparam>
+        protected class MetricAggregateContainer<TNumerator> : MetricAggregateContainerBase<TNumerator>
+        {
+            /// <summary>The time unit representing the denominator of the metric aggregate.</summary>
+            protected TimeUnit timeUnit;
+
+            /// <summary>
+            /// The time unit representing the denominator of the metric aggregate.
+            /// </summary>
+            public TimeUnit DenominatorTimeUnit
+            {
+                get
+                {
+                    return timeUnit;
+                }
+            }
+
+            /// <summary>
+            /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.MetricAggregateLogger+MetricAggregateContainer class.
+            /// </summary>
+            /// <param name="numeratorMetric">The metric which is the numerator of the aggregate.</param>
+            /// <param name="timeUnit">The time unit representing the denominator of the metric aggregate.</param>
+            /// <param name="name">The name of the metric aggregate.</param>
+            /// <param name="description">A description of the metric aggregate, explaining what it measures and/or represents.</param>
+            public MetricAggregateContainer(TNumerator numeratorMetric, TimeUnit timeUnit, string name, string description)
+                : base(numeratorMetric, name, description)
+            {
+                this.timeUnit = timeUnit;
             }
         }
 

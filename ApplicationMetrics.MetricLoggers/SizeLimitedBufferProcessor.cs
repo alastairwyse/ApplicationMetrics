@@ -22,56 +22,68 @@ namespace ApplicationMetrics.MetricLoggers
     /// <summary>
     /// Implements a buffer processing strategy for MetricLoggerBuffer classes, whereby when the total size of the buffers reaches a defined limit, a worker thread is signaled to process the buffers.
     /// </summary>
-    public class SizeLimitedBufferProcessor : WorkerThreadBufferProcessorBase, IDisposable
+    public class SizeLimitedBufferProcessor : WorkerThreadBufferProcessorBase
     {
-        private int bufferSizeLimit;
-        private AutoResetEvent bufferProcessSignal;
-        /// <summary>Indicates whether the object has been disposed.</summary>
-        protected bool disposed;
+        /// <summary>The total size of the buffers which when reached, triggers processing of the buffer contents.</summary>
+        protected Int32 bufferSizeLimit;
+        /// <summary>Signal which is used to trigger the worker thread when the specified number of metric events are bufferred.</summary>
+        protected AutoResetEvent bufferProcessSignal;
 
         /// <summary>
         /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.SizeLimitedBufferProcessor class.
         /// </summary>
         /// <param name="bufferSizeLimit">The total size of the buffers which when reached, triggers processing of the buffer contents.</param>
-        public SizeLimitedBufferProcessor(int bufferSizeLimit)
+        public SizeLimitedBufferProcessor(Int32 bufferSizeLimit)
             : base()
         {
-            disposed = false;
             this.bufferSizeLimit = bufferSizeLimit;
             bufferProcessSignal = new AutoResetEvent(false);
+        }
+
+        /// <summary>
+        /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.SizeLimitedBufferProcessor class.
+        /// </summary>
+        /// <param name="bufferSizeLimit">The total size of the buffers which when reached, triggers processing of the buffer contents.</param>
+        /// <param name="loopIterationCompleteSignal">Signal that will be set when the worker thread processing is complete (for unit testing).</param>
+        /// <remarks>This constructor is included to facilitate unit testing.</remarks>
+        public SizeLimitedBufferProcessor(Int32 bufferSizeLimit, ManualResetEvent loopIterationCompleteSignal)
+            : this(bufferSizeLimit)
+        {
+            if (loopIterationCompleteSignal == null)
+                throw new ArgumentNullException(nameof(loopIterationCompleteSignal), $"Parameter '{nameof(loopIterationCompleteSignal)}' cannot be null.");
+
+            base.loopIterationCompleteSignal = loopIterationCompleteSignal;
         }
 
         /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.Start"]/*'/>
         public override void Start()
         {
-            bufferProcessingWorkerThread = new Thread(delegate()
+            base.BufferProcessingAction = () =>
             {
-                while (cancelRequest == false)
+                while (stopRequestReceived == false)
                 {
                     bufferProcessSignal.WaitOne();
-                    if (cancelRequest == false)
+                    if (stopRequestReceived == false)
                     {
                         OnBufferProcessed(EventArgs.Empty);
                     }
                 }
-                if (TotalMetricEventsBufferred > 0 && processRemainingBufferredMetricsOnStop == true)
-                {
-                    OnBufferProcessed(EventArgs.Empty);
-                }
-            });
-
+            };
             base.Start();
         }
 
         /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.Stop"]/*'/>
         public override void Stop()
         {
-            cancelRequest = true;
+            // Check whether any exceptions have occurred on the worker thread and re-throw
+            CheckAndThrowProcessingException();
+            stopRequestReceived = true;
+            // Signal the worked thread to start processing
             bufferProcessSignal.Set();
-            if (bufferProcessingWorkerThread != null)
-            {
-                bufferProcessingWorkerThread.Join();
-            }
+            // Wait for the worker thread to finish
+            JoinWorkerThread();
+            // Check for exceptions again incase one occurred when processing the stop request
+            CheckAndThrowProcessingException();
         }
 
         /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyCountMetricEventBuffered"]/*'/>
@@ -120,40 +132,28 @@ namespace ApplicationMetrics.MetricLoggers
         #region Finalize / Dispose Methods
 
         /// <summary>
-        /// Releases the unmanaged resources used by the SizeLimitedBufferProcessor.
-        /// </summary>
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        #pragma warning disable 1591
-        ~SizeLimitedBufferProcessor()
-        {
-            Dispose(false);
-        }
-        #pragma warning restore 1591
-
-        /// <summary>
         /// Provides a method to free unmanaged resources used by this class.
         /// </summary>
         /// <param name="disposing">Whether the method is being called as part of an explicit Dispose routine, and hence whether managed resources should also be freed.</param>
-        protected virtual void Dispose(bool disposing)
+        protected override void Dispose(bool disposing)
         {
             if (!disposed)
             {
-                if (disposing)
+                try
                 {
-                    // Free other state (managed objects).
-                    Stop();
-                    bufferProcessSignal.Close();
+                    if (disposing)
+                    {
+                        // Free other state (managed objects).
+                        bufferProcessSignal.Dispose();
+                    }
+                    // Free your own state (unmanaged objects).
+
+                    // Set large fields to null.
                 }
-                // Free your own state (unmanaged objects).
-
-                // Set large fields to null.
-
-                disposed = true;
+                finally
+                {
+                    base.Dispose(disposing);
+                }
             }
         }
 
