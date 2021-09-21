@@ -142,7 +142,7 @@ AverageMessageSize: 5910.676328502415
 MessagesSentPerSecond: 2.41545893719806
 ```
 
-##### Links
+#### Links
 The documentation below was written for version 1.* of ApplicationMetrics.  Minor implementation details may have changed in versions 2.0.0 and above, however the basic principles and use cases documented are still valid.
 
 Full documentation for the project...<br>
