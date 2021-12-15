@@ -112,9 +112,9 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 12, 15, 20, 29));
 
-            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(1024));
-            testConsoleMetricLogger.Add(new TestDiskBytesReadMetric(3049));
-            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(2048));
+            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(), 1024);
+            testConsoleMetricLogger.Add(new TestDiskBytesReadMetric(), 3049);
+            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(), 2048);
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
 
@@ -122,8 +122,8 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             var throwAway2 = mockStopWatch.Received(3).ElapsedTicks;
             throwAway1 = mockDateTime.Received(1).Now;
             SetWriteTitleExpectedReceives(new System.DateTime(2014, 07, 12, 15, 20, 29));
-            mockConsole.Received(1).WriteLine(new TestMessageBytesReceivedMetric(0).Name + separatorString + "3072");
-            mockConsole.Received(1).WriteLine(new TestDiskBytesReadMetric(0).Name + separatorString + "3049");
+            mockConsole.Received(1).WriteLine(new TestMessageBytesReceivedMetric().Name + separatorString + "3072");
+            mockConsole.Received(1).WriteLine(new TestDiskBytesReadMetric().Name + separatorString + "3049");
         }
 
         [Test]
@@ -144,9 +144,9 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 14, 22, 55, 07));
 
-            testConsoleMetricLogger.Set(new TestAvailableMemoryMetric(80740352));
-            testConsoleMetricLogger.Set(new TestFreeWorkerThreadsMetric(8));
-            testConsoleMetricLogger.Set(new TestAvailableMemoryMetric(714768384));
+            testConsoleMetricLogger.Set(new TestAvailableMemoryMetric(), 80740352);
+            testConsoleMetricLogger.Set(new TestFreeWorkerThreadsMetric(), 8);
+            testConsoleMetricLogger.Set(new TestAvailableMemoryMetric(), 714768384);
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
 
@@ -154,8 +154,8 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             var throwAway2 = mockStopWatch.Received(3).ElapsedTicks;
             throwAway1 = mockDateTime.Received(1).Now;
             SetWriteTitleExpectedReceives(new System.DateTime(2014, 07, 14, 22, 55, 07));
-            mockConsole.Received(1).WriteLine(new TestAvailableMemoryMetric(0).Name + separatorString + "714768384");
-            mockConsole.Received(1).WriteLine(new TestFreeWorkerThreadsMetric(0).Name + separatorString + "8");
+            mockConsole.Received(1).WriteLine(new TestAvailableMemoryMetric().Name + separatorString + "714768384");
+            mockConsole.Received(1).WriteLine(new TestFreeWorkerThreadsMetric().Name + separatorString + "8");
         }
 
         [Test]
@@ -290,14 +290,14 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 12, 17, 56, 27, 000));
 
-            testConsoleMetricLogger.DefineMetricAggregate(new TestMessageBytesReceivedMetric(0), new TestMessageReceivedMetric(), "BytesReceivedPerMessage", "The number of bytes received per message");
-            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(2));
+            testConsoleMetricLogger.DefineMetricAggregate(new TestMessageBytesReceivedMetric(), new TestMessageReceivedMetric(), "BytesReceivedPerMessage", "The number of bytes received per message");
+            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(), 2);
             testConsoleMetricLogger.Increment(new TestMessageReceivedMetric());
-            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(6));
+            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(), 6);
             testConsoleMetricLogger.Increment(new TestMessageReceivedMetric());
-            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(3));
+            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(), 3);
             testConsoleMetricLogger.Increment(new TestMessageReceivedMetric());
-            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(7));
+            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(), 7);
             testConsoleMetricLogger.Increment(new TestMessageReceivedMetric());
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
@@ -307,7 +307,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             throwAway1 = mockDateTime.Received(1).Now;
             SetWriteTitleExpectedReceives(new System.DateTime(2014, 07, 12, 17, 56, 27, 000));
             mockConsole.Received(1).WriteLine(new TestMessageReceivedMetric().Name + separatorString + "4");
-            mockConsole.Received(1).WriteLine(new TestMessageBytesReceivedMetric(0).Name + separatorString + "18");
+            mockConsole.Received(1).WriteLine(new TestMessageBytesReceivedMetric().Name + separatorString + "18");
             mockConsole.Received(1).WriteLine("BytesReceivedPerMessage" + separatorString + "4.5");
         }
 
@@ -332,11 +332,11 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 12, 17, 56, 28, 500));
 
-            testConsoleMetricLogger.DefineMetricAggregate(new TestMessageBytesReceivedMetric(0), new TestMessageReceivedMetric(), "BytesReceivedPerMessage", "The number of bytes received per message");
-            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(2));
-            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(6));
-            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(3));
-            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(7));
+            testConsoleMetricLogger.DefineMetricAggregate(new TestMessageBytesReceivedMetric(), new TestMessageReceivedMetric(), "BytesReceivedPerMessage", "The number of bytes received per message");
+            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(), 2);
+            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(), 6);
+            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(), 3);
+            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(), 7);
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
             // Wait a few more milliseconds so that any unexpected method calls after the signal are caught
@@ -346,7 +346,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             var throwAway2 = mockStopWatch.Received(4).ElapsedTicks;
             throwAway1 = mockDateTime.Received(1).Now;
             SetWriteTitleExpectedReceives(new System.DateTime(2014, 07, 12, 17, 56, 28, 500));
-            mockConsole.Received(1).WriteLine(new TestMessageBytesReceivedMetric(0).Name + separatorString + "18");
+            mockConsole.Received(1).WriteLine(new TestMessageBytesReceivedMetric().Name + separatorString + "18");
         }
 
         [Test]
@@ -375,12 +375,12 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 12, 15, 39, 10, 125));
 
-            testConsoleMetricLogger.DefineMetricAggregate(new TestMessageBytesReceivedMetric(0), TimeUnit.Second, "MessageBytesPerSecond", "The number of message bytes received per second");
-            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(149));
-            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(257));
-            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(439));
-            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(271));
-            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(229));
+            testConsoleMetricLogger.DefineMetricAggregate(new TestMessageBytesReceivedMetric(), TimeUnit.Second, "MessageBytesPerSecond", "The number of message bytes received per second");
+            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(), 149);
+            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(), 257);
+            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(), 439);
+            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(), 271);
+            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(), 229);
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
 
@@ -389,7 +389,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             var throwAway3 = mockStopWatch.Received(1).ElapsedMilliseconds;
             throwAway1 = mockDateTime.Received(1).Now;
             SetWriteTitleExpectedReceives(new System.DateTime(2014, 07, 12, 15, 39, 10, 125));
-            mockConsole.Received(1).WriteLine(new TestMessageBytesReceivedMetric(0).Name + separatorString + "1345");
+            mockConsole.Received(1).WriteLine(new TestMessageBytesReceivedMetric().Name + separatorString + "1345");
             mockConsole.Received(1).WriteLine("MessageBytesPerSecond" + separatorString + "672.5");
         }
 
@@ -411,7 +411,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 7, 11, 23, 30, 42, 125));
 
-            testConsoleMetricLogger.DefineMetricAggregate(new TestMessageBytesReceivedMetric(0), TimeUnit.Second, "MessageBytesPerSecond", "The number of message bytes received per second");
+            testConsoleMetricLogger.DefineMetricAggregate(new TestMessageBytesReceivedMetric(), TimeUnit.Second, "MessageBytesPerSecond", "The number of message bytes received per second");
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
             // Wait a few more milliseconds so that any unexpected method calls after the signal are caught
@@ -448,11 +448,11 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 12, 15, 39, 10, 125));
 
-            testConsoleMetricLogger.DefineMetricAggregate(new TestMessageBytesReceivedMetric(0), new TestDiskBytesReadMetric(0), "MessageBytesReceivedPerDiskBytesRead", "The number of message bytes received per disk bytes read");
-            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(149));
-            testConsoleMetricLogger.Add(new TestDiskBytesReadMetric(257));
-            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(439));
-            testConsoleMetricLogger.Add(new TestDiskBytesReadMetric(271));
+            testConsoleMetricLogger.DefineMetricAggregate(new TestMessageBytesReceivedMetric(), new TestDiskBytesReadMetric(), "MessageBytesReceivedPerDiskBytesRead", "The number of message bytes received per disk bytes read");
+            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(), 149);
+            testConsoleMetricLogger.Add(new TestDiskBytesReadMetric(), 257);
+            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(), 439);
+            testConsoleMetricLogger.Add(new TestDiskBytesReadMetric(), 271);
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
 
@@ -460,8 +460,8 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             var throwAway2 = mockStopWatch.Received(4).ElapsedTicks;
             throwAway1 = mockDateTime.Received(1).Now;
             SetWriteTitleExpectedReceives(new System.DateTime(2014, 07, 12, 15, 39, 10, 125));
-            mockConsole.Received(1).WriteLine(new TestMessageBytesReceivedMetric(0).Name + separatorString + "588");
-            mockConsole.Received(1).WriteLine(new TestDiskBytesReadMetric(0).Name + separatorString + "528");
+            mockConsole.Received(1).WriteLine(new TestMessageBytesReceivedMetric().Name + separatorString + "588");
+            mockConsole.Received(1).WriteLine(new TestDiskBytesReadMetric().Name + separatorString + "528");
             mockConsole.Received(1).WriteLine("MessageBytesReceivedPerDiskBytesRead" + separatorString + "1.1136363636363635");
         }
 
@@ -482,9 +482,9 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 12, 15, 39, 10, 125));
 
-            testConsoleMetricLogger.DefineMetricAggregate(new TestMessageBytesReceivedMetric(0), new TestDiskBytesReadMetric(0), "MessageBytesReceivedPerDiskBytesRead", "The number of message bytes received per disk bytes read");
-            testConsoleMetricLogger.Add(new TestDiskBytesReadMetric(257));
-            testConsoleMetricLogger.Add(new TestDiskBytesReadMetric(271));
+            testConsoleMetricLogger.DefineMetricAggregate(new TestMessageBytesReceivedMetric(), new TestDiskBytesReadMetric(), "MessageBytesReceivedPerDiskBytesRead", "The number of message bytes received per disk bytes read");
+            testConsoleMetricLogger.Add(new TestDiskBytesReadMetric(), 257);
+            testConsoleMetricLogger.Add(new TestDiskBytesReadMetric(), 271);
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
 
@@ -512,9 +512,9 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 12, 15, 39, 10, 125));
 
-            testConsoleMetricLogger.DefineMetricAggregate(new TestMessageBytesReceivedMetric(0), new TestDiskBytesReadMetric(0), "MessageBytesReceivedPerDiskBytesRead", "The number of message bytes received per disk bytes read");
-            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(149));
-            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(439));
+            testConsoleMetricLogger.DefineMetricAggregate(new TestMessageBytesReceivedMetric(), new TestDiskBytesReadMetric(), "MessageBytesReceivedPerDiskBytesRead", "The number of message bytes received per disk bytes read");
+            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(), 149);
+            testConsoleMetricLogger.Add(new TestMessageBytesReceivedMetric(), 439);
             testConsoleMetricLogger.Start();
             workerThreadLoopIterationCompleteSignal.WaitOne();
             // Wait a few more milliseconds so that any unexpected method calls after the signal are caught
@@ -524,7 +524,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             var throwAway2 = mockStopWatch.Received(2).ElapsedTicks;
             throwAway1 = mockDateTime.Received(1).Now;
             SetWriteTitleExpectedReceives(new System.DateTime(2014, 07, 12, 15, 39, 10, 125));
-            mockConsole.Received(1).WriteLine(new TestMessageBytesReceivedMetric(0).Name + separatorString + "588");
+            mockConsole.Received(1).WriteLine(new TestMessageBytesReceivedMetric().Name + separatorString + "588");
         }
 
         [Test]

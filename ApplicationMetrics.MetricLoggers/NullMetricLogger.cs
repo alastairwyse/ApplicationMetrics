@@ -34,13 +34,13 @@ namespace ApplicationMetrics.MetricLoggers
         {
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Add(ApplicationMetrics.AmountMetric)"]/*'/>
-        public void Add(AmountMetric amountMetric)
+        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Add(ApplicationMetrics.AmountMetric,System.Int64)"]/*'/>
+        public void Add(AmountMetric amountMetric, long amount)
         {
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Set(ApplicationMetrics.StatusMetric)"]/*'/>
-        public void Set(StatusMetric statusMetric)
+        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Set(ApplicationMetrics.StatusMetric,System.Int64)"]/*'/>
+        public void Set(StatusMetric statusMetric, long value)
         {
         }
 

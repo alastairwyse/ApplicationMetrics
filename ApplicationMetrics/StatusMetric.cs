@@ -22,18 +22,5 @@ namespace ApplicationMetrics
     /// <remarks>Examples of derived classes could be metrics representing the amount of free memory in the system, or the number of active worker threads in a multi-threaded application at a given time.  The distinction between metrics represented by this class and those represented by the AmountMetric class, is that the accumulated value of amount metrics over a time period has meaning (e.g. to find the average amount over a series of instances of the metric, or over a time period).  The summing of instances of status metrics over time however, has little meaning.</remarks>
     public abstract class StatusMetric : MetricBase
     {
-        /// <summary>The value associated with the metric.</summary>
-        protected long value;
-
-        /// <summary>
-        /// The value associated with the metric.
-        /// </summary>
-        public long Value
-        {
-            get
-            {
-                return value;
-            }
-        }
     }
 }

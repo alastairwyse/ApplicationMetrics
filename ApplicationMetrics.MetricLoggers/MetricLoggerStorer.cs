@@ -135,7 +135,7 @@ namespace ApplicationMetrics.MetricLoggers
                 {
                     amountMetricTotals.Add(currentAmountMetricEvent.MetricType, new AmountMetricTotalContainer(currentAmountMetricEvent.Metric));
                 }
-                amountMetricTotals[currentAmountMetricEvent.MetricType].Add(currentAmountMetricEvent.Metric.Amount);
+                amountMetricTotals[currentAmountMetricEvent.MetricType].Add(currentAmountMetricEvent.Amount);
             }
         }
 
@@ -152,7 +152,7 @@ namespace ApplicationMetrics.MetricLoggers
                 {
                     statusMetricLatestValues.Add(currentStatustMetricEvent.MetricType, new StatusMetricValueContainer(currentStatustMetricEvent.Metric));
                 }
-                statusMetricLatestValues[currentStatustMetricEvent.MetricType].Set(currentStatustMetricEvent.Metric.Value);
+                statusMetricLatestValues[currentStatustMetricEvent.MetricType].Set(currentStatustMetricEvent.Value);
             }
         }
 

@@ -21,11 +21,10 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
     /// </summary>
     class TestAvailableMemoryMetric : StatusMetric
     {
-        public TestAvailableMemoryMetric(long availableBytes)
+        public TestAvailableMemoryMetric()
         {
             base.name = "AvailableMemory";
             base.description = "A single instance of this metric represents the amount of free memory in the system at a given time.";
-            base.value = availableBytes;
         }
     }
 }

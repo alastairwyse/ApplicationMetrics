@@ -159,6 +159,12 @@ A detailed sample implementation...<br>
     <td><b>Changes</b></td>
   </tr>
   <tr>
+    <td valign="top">4.0.0</td>
+    <td>  
+      Moved the 'Amount' property/parameter on the AmountMetric class and the 'Value' property/parameter on the StatusMetric class to be parameters of the Add() and Set() methods (respectively) on the IMetricLogger interface.  This is a fairly fundamental breaking change, but necessary as it creates a clear separation between the definition of the metrics (in subclasses of AmountMetric and StatusMetric),  and instances of the metrics (created via calls to IMetricLogger, and stored in instances of classes AmountMetricEventInstance and StatusMetricEventInstance).
+    </td>
+  </tr>
+  <tr>
     <td valign="top">3.0.0</td>
     <td>
       MetricLoggerBuffer Process*MetricEvents() methods signatures changed to pass a collection of metric event instances (rather than single metric event instance) to allow bulk transfer to external systems and/or storage.<br />

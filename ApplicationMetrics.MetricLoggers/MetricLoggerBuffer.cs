@@ -143,22 +143,22 @@ namespace ApplicationMetrics.MetricLoggers
             }
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Add(ApplicationMetrics.AmountMetric)"]/*'/>
-        public void Add(AmountMetric amountMetric)
+        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Add(ApplicationMetrics.AmountMetric,System.Int64)"]/*'/>
+        public void Add(AmountMetric amountMetric, long amount)
         {
             lock (amountMetricEventQueueLock)
             {
-                amountMetricEventQueue.Enqueue(new AmountMetricEventInstance(amountMetric, GetStopWatchUtcNow()));
+                amountMetricEventQueue.Enqueue(new AmountMetricEventInstance(amountMetric, amount, GetStopWatchUtcNow()));
                 bufferProcessingStrategy.NotifyAmountMetricEventBuffered();
             }
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Set(ApplicationMetrics.StatusMetric)"]/*'/>
-        public void Set(StatusMetric statusMetric)
+        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Set(ApplicationMetrics.StatusMetric,System.Int64)"]/*'/>
+        public void Set(StatusMetric statusMetric, long value)
         {
             lock (statusMetricEventQueueLock)
             {
-                statusMetricEventQueue.Enqueue(new StatusMetricEventInstance(statusMetric, GetStopWatchUtcNow()));
+                statusMetricEventQueue.Enqueue(new StatusMetricEventInstance(statusMetric, value, GetStopWatchUtcNow()));
                 bufferProcessingStrategy.NotifyStatusMetricEventBuffered();
             }
         }
@@ -475,14 +475,27 @@ namespace ApplicationMetrics.MetricLoggers
         /// </summary>
         protected class AmountMetricEventInstance : MetricEventInstance<AmountMetric>
         {
+            /// <summary>The amount associated with the instance of the amount metric.</summary>
+            protected long amount;
+
+            /// <summary>
+            /// The amount associated with the instance of the amount metric.
+            /// </summary>
+            public long Amount
+            {
+                get { return amount; }
+            }
+
             /// <summary>
             /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.MetricLoggerBuffer+AmountMetricEventInstance class.
             /// </summary>
             /// <param name="amountMetric">The metric which occurred.</param>
+            /// <param name="amount">The amount associated with the instance of the amount metric.</param>
             /// <param name="eventTime">The date and time the metric event occurred, expressed as UTC.</param>
-            public AmountMetricEventInstance(AmountMetric amountMetric, System.DateTime eventTime)
+            public AmountMetricEventInstance(AmountMetric amountMetric, long amount, System.DateTime eventTime)
             {
                 base.metric = amountMetric;
+                this.amount = amount;
                 base.eventTime = eventTime;
             }
         }
@@ -509,14 +522,27 @@ namespace ApplicationMetrics.MetricLoggers
         /// </summary>
         protected class StatusMetricEventInstance : MetricEventInstance<StatusMetric>
         {
+            /// <summary>The value associated with the instance of the status metric.</summary>
+            protected long value;
+
+            /// <summary>
+            /// The value associated with the instance of the status metric.
+            /// </summary>
+            public long Value
+            {
+                get { return value; }
+            }
+
             /// <summary>
             /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.MetricLoggerBuffer+StatusMetricEventInstance class.
             /// </summary>
             /// <param name="statusMetric">The metric which occurred.</param>
+            /// <param name="value">The value associated with the instance of the status metric.</param>
             /// <param name="eventTime">The date and time the metric event occurred, expressed as UTC.</param>
-            public StatusMetricEventInstance(StatusMetric statusMetric, System.DateTime eventTime)
+            public StatusMetricEventInstance(StatusMetric statusMetric, long value, System.DateTime eventTime)
             {
                 base.metric = statusMetric;
+                this.value = value;
                 base.eventTime = eventTime;
             }
         }
@@ -526,17 +552,15 @@ namespace ApplicationMetrics.MetricLoggers
         /// </summary>
         protected class IntervalMetricEventInstance : MetricEventInstance<IntervalMetric>
         {
-            private IntervalMetricEventTimePoint timePoint;
+            /// <summary>Whether the event represents the start or the end of the interval metric.</summary>
+            protected IntervalMetricEventTimePoint timePoint;
 
             /// <summary>
             /// Whether the event represents the start or the end of the interval metric.
             /// </summary>
             public IntervalMetricEventTimePoint TimePoint
             {
-                get
-                {
-                    return timePoint;
-                }
+                get { return timePoint; }
             }
 
             /// <summary>

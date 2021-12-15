@@ -115,7 +115,7 @@ namespace ApplicationMetrics.MetricLoggers
                 StringBuilder stringBuilder = InitializeStringBuilder(currentAmountMetricEventInstance.EventTime.ToLocalTime());
                 stringBuilder.Append(currentAmountMetricEventInstance.Metric.Name);
                 AppendSeparatorCharacter(stringBuilder);
-                stringBuilder.Append(currentAmountMetricEventInstance.Metric.Amount);
+                stringBuilder.Append(currentAmountMetricEventInstance.Amount);
                 streamWriter.WriteLine(stringBuilder.ToString());
                 streamWriter.Flush();
             }
@@ -133,7 +133,7 @@ namespace ApplicationMetrics.MetricLoggers
                 StringBuilder stringBuilder = InitializeStringBuilder(currentStatustMetricEventInstance.EventTime.ToLocalTime());
                 stringBuilder.Append(currentStatustMetricEventInstance.Metric.Name);
                 AppendSeparatorCharacter(stringBuilder);
-                stringBuilder.Append(currentStatustMetricEventInstance.Metric.Value);
+                stringBuilder.Append(currentStatustMetricEventInstance.Value);
                 streamWriter.WriteLine(stringBuilder.ToString());
                 streamWriter.Flush();
             }

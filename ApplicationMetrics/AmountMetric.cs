@@ -22,18 +22,5 @@ namespace ApplicationMetrics
     /// <remarks>Examples of derived classes could be metrics representing the number of bytes in a message sent to a remote system, or the number of blocks read from disk in a read operation.</remarks>
     public abstract class AmountMetric : MetricBase
     {
-        /// <summary>The actual amount recorded in a single occurrence of the metric.</summary>
-        protected long amount;
-
-        /// <summary>
-        /// The actual amount recorded in a single occurrence of the metric.
-        /// </summary>
-        public long Amount
-        {
-            get
-            {
-                return amount;
-            }
-        }
     }
 }
