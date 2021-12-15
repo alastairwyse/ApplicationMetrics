@@ -31,19 +31,19 @@
     </member>
     <member name="M:ApplicationMetrics.IMetricLogger.Begin(ApplicationMetrics.IntervalMetric)">
       <summary>
-        Records the starting of the specified interval event.
+        Records the starting of the specified interval metric event.
       </summary>
       <param name="intervalMetric">The interval metric that started.</param>
     </member>
     <member name="M:ApplicationMetrics.IMetricLogger.End(ApplicationMetrics.IntervalMetric)">
       <summary>
-        Records the completion of the specified interval event.
+        Records the completion of the specified interval metric event.
       </summary>
       <param name="intervalMetric">The interval metric that completed.</param>
     </member>
     <member name="M:ApplicationMetrics.IMetricLogger.CancelBegin(ApplicationMetrics.IntervalMetric)">
       <summary>
-        Cancels the starting of the specified interval event (e.g. in the case that an exception occurs between the starting and completion of the interval event).
+        Cancels the starting of the specified interval metric event (e.g. in the case that an exception occurs between the starting and completion of the event).
       </summary>
       <param name="intervalMetric">The interval metric that should be cancelled.</param>
     </member>

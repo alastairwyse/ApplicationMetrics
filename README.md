@@ -52,11 +52,10 @@ class MessageSent : CountMetric
 
 class MessageSize : AmountMetric
 {
-    public MessageSize(long messageSize)
+    public MessageSize()
     {
         base.name = "MessageSize";
         base.description = "The size of a sent message";
-        base.amount = messageSize;
     }
 }
 
@@ -100,7 +99,7 @@ public class MessageSender
 
         metricLogger.End(new MessageSendTime());
         metricLogger.Increment(new MessageSent());
-        metricLogger.Add(new MessageSize(message.Length));
+        metricLogger.Add(new MessageSize(), message.Length);
     }
 ````
 
@@ -121,7 +120,7 @@ static void Main(string[] args)
     ConsoleMetricLogger metricLogger = new ConsoleMetricLogger(bufferProcessor, true);
 
     // Define a metric aggregate to record the average size of sent messages (total message size / number of messages sent)
-    metricLogger.DefineMetricAggregate(new MessageSize(0), new MessageSent(), "AverageMessageSize", "The average size of sent messages");
+    metricLogger.DefineMetricAggregate(new MessageSize(), new MessageSent(), "AverageMessageSize", "The average size of sent messages");
 
     // Define a metric aggregate to record the number of messages sent per second (number of messages sent / number of seconds of runtime)
     metricLogger.DefineMetricAggregate(new MessageSent(), TimeUnit.Second, "MessagesSentPerSecond", "The number of messages sent per second");
