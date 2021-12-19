@@ -26,15 +26,15 @@ Metrics are defined, by deriving from the CountMetric, AmountMetric, StatusMetri
   </tr>
   <tr>
     <td valign="top">AmountMetric</td>
-    <td>Used to record the size of an entity associated with an event (e.g. the size of a message sent to a remote system)</td>
+    <td>Used to record events which have an associated size which accumulates, but not necessarily by 1 each time (e.g. the size in bytes of a message sent to a remote system)</td>
   </tr>
   <tr>
     <td valign="top">StatusMetric</td>
-    <td>Used to record the size of an entity at a specific point in time (e.g. total amount of free memory)</td>
+    <td>Used to record events which have an associated size which varies over time rather than accumulating (e.g. total amount of free memory).  The distinction from AmountMetrics is that summing the total recorded amounts over successive AmountMetric events has meaning (e.g. the total number of bytes sent to a remote system totalled across multiple sent messages), whereas summing the total recorded amounts over successive StatusMetrics would not (e.g. summed free memory across multiple sampling points).</td>
   </tr>
   <tr>
     <td valign="top">IntervalMetric</td>
-    <td>Used to record the time taken for an event to complete (e.g. total time taken to send a message to a remote system)</td>
+    <td>Used to record the time taken for an event to complete (e.g. total time taken to send a message to a remote system).  This is calculated by capturing the start and end times of an IntervalMetric event.</td>
   </tr>
 </table>
 
