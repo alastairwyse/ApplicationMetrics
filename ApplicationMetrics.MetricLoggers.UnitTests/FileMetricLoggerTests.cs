@@ -82,17 +82,17 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             );
 
             testFileMetricLogger.Start();
-            testFileMetricLogger.Increment(new TestMessageReceivedMetric());
-            testFileMetricLogger.Increment(new TestDiskReadOperationMetric());
-            testFileMetricLogger.Increment(new TestMessageReceivedMetric());
+            testFileMetricLogger.Increment(new MessageReceived());
+            testFileMetricLogger.Increment(new DiskReadOperation());
+            testFileMetricLogger.Increment(new MessageReceived());
             testFileMetricLogger.Stop();
             loopIterationCompleteSignal.WaitOne();
 
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(3).ElapsedTicks;
-            mockStreamWriter.Received(1).WriteLine(timeStamp1.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestMessageReceivedMetric().Name);
-            mockStreamWriter.Received(1).WriteLine(timeStamp2.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestDiskReadOperationMetric().Name);
-            mockStreamWriter.Received(1).WriteLine(timeStamp3.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestMessageReceivedMetric().Name);
+            mockStreamWriter.Received(1).WriteLine(timeStamp1.Add(utcOffset).ToString(dateTimeFormat) + " | " + new MessageReceived().Name);
+            mockStreamWriter.Received(1).WriteLine(timeStamp2.Add(utcOffset).ToString(dateTimeFormat) + " | " + new DiskReadOperation().Name);
+            mockStreamWriter.Received(1).WriteLine(timeStamp3.Add(utcOffset).ToString(dateTimeFormat) + " | " + new MessageReceived().Name);
             mockStreamWriter.Received(3).Flush();
         }
 
@@ -115,25 +115,25 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 130000000L,
                 170000000L
             );
-            mockStreamWriter.When(streamWriter => streamWriter.WriteLine(timeStamp2.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestDiskReadOperationMetric().Name) ).Throw(new Exception("Mock worker thread exception."));
+            mockStreamWriter.When(streamWriter => streamWriter.WriteLine(timeStamp2.Add(utcOffset).ToString(dateTimeFormat) + " | " + new DiskReadOperation().Name) ).Throw(new Exception("Mock worker thread exception."));
 
             testFileMetricLogger.Start();
-            testFileMetricLogger.Increment(new TestMessageReceivedMetric());
-            testFileMetricLogger.Increment(new TestDiskReadOperationMetric());
+            testFileMetricLogger.Increment(new MessageReceived());
+            testFileMetricLogger.Increment(new DiskReadOperation());
             // Sleep to try to ensure the worker thread has enough time to process the above buffered events
             Thread.Sleep(100);
 
             var e = Assert.Throws<Exception>(delegate
             {
-                testFileMetricLogger.Increment(new TestMessageReceivedMetric());
+                testFileMetricLogger.Increment(new MessageReceived());
             });
 
             Assert.That(e.Message, Does.StartWith("Exception occurred on buffer processing worker thread at "));
             Assert.That(e.InnerException.Message, Does.StartWith("Mock worker thread exception."));
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(3).ElapsedTicks;
-            mockStreamWriter.Received(1).WriteLine(timeStamp1.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestMessageReceivedMetric().Name);
-            mockStreamWriter.Received(1).WriteLine(timeStamp2.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestDiskReadOperationMetric().Name);
+            mockStreamWriter.Received(1).WriteLine(timeStamp1.Add(utcOffset).ToString(dateTimeFormat) + " | " + new MessageReceived().Name);
+            mockStreamWriter.Received(1).WriteLine(timeStamp2.Add(utcOffset).ToString(dateTimeFormat) + " | " + new DiskReadOperation().Name);
             mockStreamWriter.Received(1).Flush();
         }
 
@@ -158,17 +158,17 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             );
 
             testFileMetricLogger.Start();
-            testFileMetricLogger.Add(new TestMessageBytesReceivedMetric(), 12345);
-            testFileMetricLogger.Add(new TestDiskBytesReadMetric(), 160307);
-            testFileMetricLogger.Add(new TestMessageBytesReceivedMetric(), 12347);
+            testFileMetricLogger.Add(new MessageBytesReceived(), 12345);
+            testFileMetricLogger.Add(new DiskBytesRead(), 160307);
+            testFileMetricLogger.Add(new MessageBytesReceived(), 12347);
             testFileMetricLogger.Stop();
             loopIterationCompleteSignal.WaitOne();
 
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(3).ElapsedTicks;
-            mockStreamWriter.Received(1).WriteLine(timeStamp1.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestMessageBytesReceivedMetric().Name + " | " + 12345);
-            mockStreamWriter.Received(1).WriteLine(timeStamp2.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestDiskBytesReadMetric().Name + " | " + 160307);
-            mockStreamWriter.Received(1).WriteLine(timeStamp3.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestMessageBytesReceivedMetric().Name + " | " + 12347);
+            mockStreamWriter.Received(1).WriteLine(timeStamp1.Add(utcOffset).ToString(dateTimeFormat) + " | " + new MessageBytesReceived().Name + " | " + 12345);
+            mockStreamWriter.Received(1).WriteLine(timeStamp2.Add(utcOffset).ToString(dateTimeFormat) + " | " + new DiskBytesRead().Name + " | " + 160307);
+            mockStreamWriter.Received(1).WriteLine(timeStamp3.Add(utcOffset).ToString(dateTimeFormat) + " | " + new MessageBytesReceived().Name + " | " + 12347);
             mockStreamWriter.Received(3).Flush();
         }
 
@@ -191,25 +191,25 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 130000000L,
                 170000000L
             );
-            mockStreamWriter.When(streamWriter => streamWriter.WriteLine(timeStamp2.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestDiskBytesReadMetric().Name + " | " + 160307)).Throw(new Exception("Mock worker thread exception."));
+            mockStreamWriter.When(streamWriter => streamWriter.WriteLine(timeStamp2.Add(utcOffset).ToString(dateTimeFormat) + " | " + new DiskBytesRead().Name + " | " + 160307)).Throw(new Exception("Mock worker thread exception."));
 
             testFileMetricLogger.Start();
-            testFileMetricLogger.Add(new TestMessageBytesReceivedMetric(), 12345);
-            testFileMetricLogger.Add(new TestDiskBytesReadMetric(), 160307);
+            testFileMetricLogger.Add(new MessageBytesReceived(), 12345);
+            testFileMetricLogger.Add(new DiskBytesRead(), 160307);
             // Sleep to try to ensure the worker thread has enough time to process the above buffered events
             Thread.Sleep(100);
 
             var e = Assert.Throws<Exception>(delegate
             {
-                testFileMetricLogger.Add(new TestMessageBytesReceivedMetric(), 12347);
+                testFileMetricLogger.Add(new MessageBytesReceived(), 12347);
             });
 
             Assert.That(e.Message, Does.StartWith("Exception occurred on buffer processing worker thread at "));
             Assert.That(e.InnerException.Message, Does.StartWith("Mock worker thread exception."));
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(3).ElapsedTicks;
-            mockStreamWriter.Received(1).WriteLine(timeStamp1.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestMessageBytesReceivedMetric().Name + " | " + 12345);
-            mockStreamWriter.Received(1).WriteLine(timeStamp2.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestDiskBytesReadMetric().Name + " | " + 160307);
+            mockStreamWriter.Received(1).WriteLine(timeStamp1.Add(utcOffset).ToString(dateTimeFormat) + " | " + new MessageBytesReceived().Name + " | " + 12345);
+            mockStreamWriter.Received(1).WriteLine(timeStamp2.Add(utcOffset).ToString(dateTimeFormat) + " | " + new DiskBytesRead().Name + " | " + 160307);
             mockStreamWriter.Received(1).Flush();
         }
 
@@ -234,17 +234,17 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             );
 
             testFileMetricLogger.Start();
-            testFileMetricLogger.Set(new TestAvailableMemoryMetric(), 301156000);
-            testFileMetricLogger.Set(new TestFreeWorkerThreadsMetric(), 12);
-            testFileMetricLogger.Set(new TestAvailableMemoryMetric(), 301155987);
+            testFileMetricLogger.Set(new AvailableMemory(), 301156000);
+            testFileMetricLogger.Set(new FreeWorkerThreads(), 12);
+            testFileMetricLogger.Set(new AvailableMemory(), 301155987);
             testFileMetricLogger.Stop();
             loopIterationCompleteSignal.WaitOne();
 
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(3).ElapsedTicks;
-            mockStreamWriter.Received(1).WriteLine(timeStamp1.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestAvailableMemoryMetric().Name + " | " + 301156000);
-            mockStreamWriter.Received(1).WriteLine(timeStamp2.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestFreeWorkerThreadsMetric().Name + " | " + 12);
-            mockStreamWriter.Received(1).WriteLine(timeStamp3.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestAvailableMemoryMetric().Name + " | " + 301155987);
+            mockStreamWriter.Received(1).WriteLine(timeStamp1.Add(utcOffset).ToString(dateTimeFormat) + " | " + new AvailableMemory().Name + " | " + 301156000);
+            mockStreamWriter.Received(1).WriteLine(timeStamp2.Add(utcOffset).ToString(dateTimeFormat) + " | " + new FreeWorkerThreads().Name + " | " + 12);
+            mockStreamWriter.Received(1).WriteLine(timeStamp3.Add(utcOffset).ToString(dateTimeFormat) + " | " + new AvailableMemory().Name + " | " + 301155987);
             mockStreamWriter.Received(3).Flush();
         }
 
@@ -267,25 +267,25 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 1550000000L,
                 10210000000L
             );
-            mockStreamWriter.When(streamWriter => streamWriter.WriteLine(timeStamp2.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestFreeWorkerThreadsMetric().Name + " | " + 12)).Throw(new Exception("Mock worker thread exception."));
+            mockStreamWriter.When(streamWriter => streamWriter.WriteLine(timeStamp2.Add(utcOffset).ToString(dateTimeFormat) + " | " + new FreeWorkerThreads().Name + " | " + 12)).Throw(new Exception("Mock worker thread exception."));
 
             testFileMetricLogger.Start();
-            testFileMetricLogger.Set(new TestAvailableMemoryMetric(), 301156000);
-            testFileMetricLogger.Set(new TestFreeWorkerThreadsMetric(), 12);
+            testFileMetricLogger.Set(new AvailableMemory(), 301156000);
+            testFileMetricLogger.Set(new FreeWorkerThreads(), 12);
             // Sleep to try to ensure the worker thread has enough time to process the above buffered events
             Thread.Sleep(100);
 
             var e = Assert.Throws<Exception>(delegate
             {
-                testFileMetricLogger.Set(new TestAvailableMemoryMetric(), 301155987);
+                testFileMetricLogger.Set(new AvailableMemory(), 301155987);
             });
 
             Assert.That(e.Message, Does.StartWith("Exception occurred on buffer processing worker thread at "));
             Assert.That(e.InnerException.Message, Does.StartWith("Mock worker thread exception."));
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(3).ElapsedTicks;
-            mockStreamWriter.Received(1).WriteLine(timeStamp1.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestAvailableMemoryMetric().Name + " | " + 301156000);
-            mockStreamWriter.Received(1).WriteLine(timeStamp2.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestFreeWorkerThreadsMetric().Name + " | " + 12);
+            mockStreamWriter.Received(1).WriteLine(timeStamp1.Add(utcOffset).ToString(dateTimeFormat) + " | " + new AvailableMemory().Name + " | " + 301156000);
+            mockStreamWriter.Received(1).WriteLine(timeStamp2.Add(utcOffset).ToString(dateTimeFormat) + " | " + new FreeWorkerThreads().Name + " | " + 12);
             mockStreamWriter.Received(1).Flush();
         }
 
@@ -317,20 +317,20 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             );
 
             testFileMetricLogger.Start();
-            testFileMetricLogger.Begin(new TestDiskReadTimeMetric());
-            testFileMetricLogger.End(new TestDiskReadTimeMetric());
-            testFileMetricLogger.Begin(new TestMessageProcessingTimeMetric());
-            testFileMetricLogger.End(new TestMessageProcessingTimeMetric());
-            testFileMetricLogger.Begin(new TestMessageProcessingTimeMetric());
-            testFileMetricLogger.End(new TestMessageProcessingTimeMetric());
+            testFileMetricLogger.Begin(new DiskReadTime());
+            testFileMetricLogger.End(new DiskReadTime());
+            testFileMetricLogger.Begin(new MessageProcessingTime());
+            testFileMetricLogger.End(new MessageProcessingTime());
+            testFileMetricLogger.Begin(new MessageProcessingTime());
+            testFileMetricLogger.End(new MessageProcessingTime());
             testFileMetricLogger.Stop();
             loopIterationCompleteSignal.WaitOne();
 
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(6).ElapsedTicks;
-            mockStreamWriter.Received(1).WriteLine(timeStamp1.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestDiskReadTimeMetric().Name + " | " + 34);
-            mockStreamWriter.Received(1).WriteLine(timeStamp3.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestMessageProcessingTimeMetric().Name + " | " + 0);
-            mockStreamWriter.Received(1).WriteLine(timeStamp5.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestMessageProcessingTimeMetric().Name + " | " + 1035);
+            mockStreamWriter.Received(1).WriteLine(timeStamp1.Add(utcOffset).ToString(dateTimeFormat) + " | " + new DiskReadTime().Name + " | " + 34);
+            mockStreamWriter.Received(1).WriteLine(timeStamp3.Add(utcOffset).ToString(dateTimeFormat) + " | " + new MessageProcessingTime().Name + " | " + 0);
+            mockStreamWriter.Received(1).WriteLine(timeStamp5.Add(utcOffset).ToString(dateTimeFormat) + " | " + new MessageProcessingTime().Name + " | " + 1035);
             mockStreamWriter.Received(3).Flush();
         }
 
@@ -360,28 +360,28 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 1267967500000L,
                 1267977850000L
             );
-            mockStreamWriter.When(streamWriter => streamWriter.WriteLine(timeStamp3.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestMessageProcessingTimeMetric().Name + " | " + 0)).Throw(new Exception("Mock worker thread exception."));
+            mockStreamWriter.When(streamWriter => streamWriter.WriteLine(timeStamp3.Add(utcOffset).ToString(dateTimeFormat) + " | " + new MessageProcessingTime().Name + " | " + 0)).Throw(new Exception("Mock worker thread exception."));
 
             testFileMetricLogger.Start();
-            testFileMetricLogger.Begin(new TestDiskReadTimeMetric());
-            testFileMetricLogger.End(new TestDiskReadTimeMetric());
-            testFileMetricLogger.Begin(new TestMessageProcessingTimeMetric());
-            testFileMetricLogger.End(new TestMessageProcessingTimeMetric());
-            testFileMetricLogger.Begin(new TestMessageProcessingTimeMetric());
+            testFileMetricLogger.Begin(new DiskReadTime());
+            testFileMetricLogger.End(new DiskReadTime());
+            testFileMetricLogger.Begin(new MessageProcessingTime());
+            testFileMetricLogger.End(new MessageProcessingTime());
+            testFileMetricLogger.Begin(new MessageProcessingTime());
             // Sleep to try to ensure the worker thread has enough time to process the above buffered events
             Thread.Sleep(100);
 
             var e = Assert.Throws<Exception>(delegate
             {
-                testFileMetricLogger.End(new TestMessageProcessingTimeMetric());
+                testFileMetricLogger.End(new MessageProcessingTime());
             });
 
             Assert.That(e.Message, Does.StartWith("Exception occurred on buffer processing worker thread at "));
             Assert.That(e.InnerException.Message, Does.StartWith("Mock worker thread exception."));
             var throwAway1 = mockDateTime.Received(1).UtcNow;
             var throwAway2 = mockStopWatch.Received(6).ElapsedTicks;
-            mockStreamWriter.Received(1).WriteLine(timeStamp1.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestDiskReadTimeMetric().Name + " | " + 34);
-            mockStreamWriter.Received(1).WriteLine(timeStamp3.Add(utcOffset).ToString(dateTimeFormat) + " | " + new TestMessageProcessingTimeMetric().Name + " | " + 0);
+            mockStreamWriter.Received(1).WriteLine(timeStamp1.Add(utcOffset).ToString(dateTimeFormat) + " | " + new DiskReadTime().Name + " | " + 34);
+            mockStreamWriter.Received(1).WriteLine(timeStamp3.Add(utcOffset).ToString(dateTimeFormat) + " | " + new MessageProcessingTime().Name + " | " + 0);
             mockStreamWriter.Received(1).Flush();
         }
 

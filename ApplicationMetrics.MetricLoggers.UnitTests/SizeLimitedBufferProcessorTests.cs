@@ -58,9 +58,9 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         public void Stop_NoRemainingEventsAndProcessRemainingEventsSetTrue()
         {
             testCountingMetricLogger.Start();
-            testCountingMetricLogger.Add(new TestMessageBytesReceivedMetric(), 100);
-            testCountingMetricLogger.Increment(new TestMessageReceivedMetric());
-            testCountingMetricLogger.Set(new TestAvailableMemoryMetric(), 1000000);
+            testCountingMetricLogger.Add(new MessageBytesReceived(), 100);
+            testCountingMetricLogger.Increment(new MessageReceived());
+            testCountingMetricLogger.Set(new AvailableMemory(), 1000000);
             // Sleep to try to ensure the worker thread has enough time to process the above buffered events
             Thread.Sleep(millisecondsToWaitBeforeStop);
             testSizeLimitedBufferProcessor.Stop();
@@ -76,9 +76,9 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         public void Stop_NoRemainingEventsAndProcessRemainingEventsSetFalse()
         {
             testCountingMetricLogger.Start();
-            testCountingMetricLogger.Add(new TestMessageBytesReceivedMetric(), 100);
-            testCountingMetricLogger.Increment(new TestMessageReceivedMetric());
-            testCountingMetricLogger.Set(new TestAvailableMemoryMetric(), 1000000);
+            testCountingMetricLogger.Add(new MessageBytesReceived(), 100);
+            testCountingMetricLogger.Increment(new MessageReceived());
+            testCountingMetricLogger.Set(new AvailableMemory(), 1000000);
             // Sleep to try to ensure the worker thread has enough time to process the above buffered events
             Thread.Sleep(millisecondsToWaitBeforeStop);
             testSizeLimitedBufferProcessor.Stop(false);
@@ -94,12 +94,12 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         public void Stop_RemainingEventsAndProcessRemainingEventsSetTrue()
         {
             testCountingMetricLogger.Start();
-            testCountingMetricLogger.Add(new TestMessageBytesReceivedMetric(), 100);
-            testCountingMetricLogger.Increment(new TestMessageReceivedMetric());
-            testCountingMetricLogger.Set(new TestAvailableMemoryMetric(), 1000000);
+            testCountingMetricLogger.Add(new MessageBytesReceived(), 100);
+            testCountingMetricLogger.Increment(new MessageReceived());
+            testCountingMetricLogger.Set(new AvailableMemory(), 1000000);
             // Sleep to try to ensure the worker thread has enough time to process the above buffered events
             Thread.Sleep(millisecondsToWaitBeforeStop);
-            testCountingMetricLogger.Add(new TestMessageBytesReceivedMetric(), 200);
+            testCountingMetricLogger.Add(new MessageBytesReceived(), 200);
             testSizeLimitedBufferProcessor.Stop();
             loopIterationCompleteSignal.WaitOne();
 
@@ -113,12 +113,12 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         public void Stop_RemainingEventsAndProcessRemainingEventsSetFalse()
         {
             testCountingMetricLogger.Start();
-            testCountingMetricLogger.Add(new TestMessageBytesReceivedMetric(), 100);
-            testCountingMetricLogger.Increment(new TestMessageReceivedMetric());
-            testCountingMetricLogger.Set(new TestAvailableMemoryMetric(), 1000000);
+            testCountingMetricLogger.Add(new MessageBytesReceived(), 100);
+            testCountingMetricLogger.Increment(new MessageReceived());
+            testCountingMetricLogger.Set(new AvailableMemory(), 1000000);
             // Sleep to try to ensure the worker thread has enough time to process the above buffered events
             Thread.Sleep(millisecondsToWaitBeforeStop);
-            testCountingMetricLogger.Add(new TestMessageBytesReceivedMetric(), 200);
+            testCountingMetricLogger.Add(new MessageBytesReceived(), 200);
             testSizeLimitedBufferProcessor.Stop(false);
             loopIterationCompleteSignal.WaitOne();
 
