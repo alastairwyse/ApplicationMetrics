@@ -158,7 +158,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             );
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
-                // Returns for calls to Increment()
+                // Returns for calls to Add()
                 ConvertMillisecondsToTicks(250),
                 ConvertMillisecondsToTicks(510),
                 ConvertMillisecondsToTicks(780)
@@ -198,7 +198,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             );
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
-                // Returns for calls to Increment()
+                // Returns for calls to Set()
                 ConvertMillisecondsToTicks(250),
                 ConvertMillisecondsToTicks(510),
                 ConvertMillisecondsToTicks(780)
@@ -238,7 +238,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             );
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
-                // Returns for calls to Increment()
+                // Returns for calls to Begin()
                 ConvertMillisecondsToTicks(250),
                 ConvertMillisecondsToTicks(510)
             );
@@ -259,12 +259,10 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
             (
-                // Returns for calls to Start()
                 GenerateUtcDateTime("2022-09-03 11:36:43.000")
             );
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
-                // Returns for calls to Increment()
                 ConvertMillisecondsToTicks(250)
             );
 
@@ -283,12 +281,10 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
             (
-                // Returns for calls to Start()
                 GenerateUtcDateTime("2022-09-03 11:48:13.000")
             );
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
-                // Returns for calls to Increment()
                 ConvertMillisecondsToTicks(250),
                 ConvertMillisecondsToTicks(510),
                 ConvertMillisecondsToTicks(770)
@@ -311,12 +307,10 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
             (
-                // Returns for calls to Start()
                 GenerateUtcDateTime("2022-09-03 11:50:49.000")
             );
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
-                // Returns for calls to Increment()
                 ConvertMillisecondsToTicks(250)
             );
 
@@ -336,12 +330,10 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             // Tests that interval metrics are processed correctly when the buffers/queues are processed in between calls to Begin() and End().
             mockDateTime.UtcNow.Returns<System.DateTime>
             (
-                // Returns for calls to Start()
                 GenerateUtcDateTime("2022-09-03 11:53:51.000")
             );
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
-                // Returns for calls to Increment()
                 ConvertMillisecondsToTicks(100),
                 ConvertMillisecondsToTicks(210),
                 ConvertMillisecondsToTicks(230),
@@ -371,8 +363,232 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             Assert.AreEqual(0, testMetricLoggerBuffer.CapturedStatusMetricEvents.Count);
         }
 
-        // TODO: 2020-09-03
-        //   Next MicrosoftAccessMetricLoggerTests.BeginCancelBeginBufferProcessingBetweenBeginAndCancelBeginSuccessTests()
+        [Test]
+        public void CancelBegin_NonInterleavedModeAndBufferProcessingBetweenBeginAndCancel()
+        {
+            // Tests that interval metrics are processed correctly when the buffers/queues are processed in between calls to Begin() and Cancel().
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                GenerateUtcDateTime("2022-09-03 17:01:09.000")
+            );
+            mockStopWatch.ElapsedTicks.Returns<Int64>
+            (
+                ConvertMillisecondsToTicks(100),
+                ConvertMillisecondsToTicks(210),
+                ConvertMillisecondsToTicks(230),
+                ConvertMillisecondsToTicks(360)
+            );
+
+            testMetricLoggerBuffer.Start();
+            testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            testMetricLoggerBuffer.DequeueAndProcessMetricEvents();
+            testMetricLoggerBuffer.CancelBegin(new MessageProcessingTime());
+            testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            testMetricLoggerBuffer.End(new MessageProcessingTime());
+            testMetricLoggerBuffer.DequeueAndProcessMetricEvents();
+            testMetricLoggerBuffer.Stop();
+
+            mockBufferProcessingStrategy.Received(1).NotifyIntervalMetricEventBuffered();
+            mockBufferProcessingStrategy.Received(2).NotifyIntervalMetricEventBufferCleared();
+            Assert.AreEqual(1, testMetricLoggerBuffer.CapturedIntervalMetricEvents.Count);
+            Assert.IsInstanceOf(typeof(MessageProcessingTime), testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item1);
+            Assert.AreEqual(GenerateUtcDateTime("2022-09-03 17:01:09.230"), testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item2);
+            Assert.AreEqual(130, testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item3);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedCountMetricEvents.Count);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedAmountMetricEvents.Count);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedStatusMetricEvents.Count);
+        }
+
+        [Test]
+        public void Begin_NonInterleavedMode()
+        {
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                GenerateUtcDateTime("2022-09-03 17:11:42.000")
+            );
+            mockStopWatch.ElapsedTicks.Returns<Int64>
+            (
+                ConvertMillisecondsToTicks(11),
+                ConvertMillisecondsToTicks(23),
+                ConvertMillisecondsToTicks(36),
+                ConvertMillisecondsToTicks(40),
+                ConvertMillisecondsToTicks(55),
+                ConvertMillisecondsToTicks(71)
+            );
+
+            testMetricLoggerBuffer.Start();
+            testMetricLoggerBuffer.Begin(new DiskReadTime());
+            testMetricLoggerBuffer.End(new DiskReadTime());
+            testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            testMetricLoggerBuffer.End(new MessageProcessingTime());
+            testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            testMetricLoggerBuffer.End(new MessageProcessingTime());
+            testMetricLoggerBuffer.DequeueAndProcessMetricEvents();
+            testMetricLoggerBuffer.Stop();
+
+            mockBufferProcessingStrategy.Received(3).NotifyIntervalMetricEventBuffered();
+            mockBufferProcessingStrategy.Received(1).NotifyIntervalMetricEventBufferCleared();
+            Assert.AreEqual(3, testMetricLoggerBuffer.CapturedIntervalMetricEvents.Count);
+            Assert.IsInstanceOf(typeof(DiskReadTime), testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item1);
+            Assert.AreEqual(GenerateUtcDateTime("2022-09-03 17:11:42.011"), testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item2);
+            Assert.AreEqual(12, testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item3);
+            Assert.IsInstanceOf(typeof(MessageProcessingTime), testMetricLoggerBuffer.CapturedIntervalMetricEvents[1].Item1);
+            Assert.AreEqual(GenerateUtcDateTime("2022-09-03 17:11:42.036"), testMetricLoggerBuffer.CapturedIntervalMetricEvents[1].Item2);
+            Assert.AreEqual(4, testMetricLoggerBuffer.CapturedIntervalMetricEvents[1].Item3);
+            Assert.IsInstanceOf(typeof(MessageProcessingTime), testMetricLoggerBuffer.CapturedIntervalMetricEvents[2].Item1);
+            Assert.AreEqual(GenerateUtcDateTime("2022-09-03 17:11:42.055"), testMetricLoggerBuffer.CapturedIntervalMetricEvents[2].Item2);
+            Assert.AreEqual(16, testMetricLoggerBuffer.CapturedIntervalMetricEvents[2].Item3);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedCountMetricEvents.Count);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedAmountMetricEvents.Count);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedStatusMetricEvents.Count);
+        }
+
+        [Test]
+        public void Begin_NonInterleavedModeNestedBeginAndEndCalls()
+        {
+            // Tests correct logging of metrics where an interval metric's begin and end events are wholly nested within the begin and end events of another type of interval metric
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                GenerateUtcDateTime("2022-09-04 11:33:07.000")
+            );
+            mockStopWatch.ElapsedTicks.Returns<Int64>
+            (
+                ConvertMillisecondsToTicks(11),
+                ConvertMillisecondsToTicks(23),
+                ConvertMillisecondsToTicks(36),
+                ConvertMillisecondsToTicks(50)
+            );
+
+            testMetricLoggerBuffer.Start();
+            testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            testMetricLoggerBuffer.Begin(new DiskReadTime());
+            testMetricLoggerBuffer.End(new DiskReadTime());
+            testMetricLoggerBuffer.End(new MessageProcessingTime());
+            testMetricLoggerBuffer.DequeueAndProcessMetricEvents();
+            testMetricLoggerBuffer.Stop();
+
+            mockBufferProcessingStrategy.Received(2).NotifyIntervalMetricEventBuffered();
+            mockBufferProcessingStrategy.Received(1).NotifyIntervalMetricEventBufferCleared();
+            Assert.AreEqual(2, testMetricLoggerBuffer.CapturedIntervalMetricEvents.Count);
+            Assert.IsInstanceOf(typeof(DiskReadTime), testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item1);
+            Assert.AreEqual(GenerateUtcDateTime("2022-09-04 11:33:07.023"), testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item2);
+            Assert.AreEqual(13, testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item3);
+            Assert.IsInstanceOf(typeof(MessageProcessingTime), testMetricLoggerBuffer.CapturedIntervalMetricEvents[1].Item1);
+            Assert.AreEqual(GenerateUtcDateTime("2022-09-04 11:33:07.011"), testMetricLoggerBuffer.CapturedIntervalMetricEvents[1].Item2);
+            Assert.AreEqual(39, testMetricLoggerBuffer.CapturedIntervalMetricEvents[1].Item3);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedCountMetricEvents.Count);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedAmountMetricEvents.Count);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedStatusMetricEvents.Count);
+        }
+
+        [Test]
+        public void Begin_NonInterleavedModeIntervalMetricCheckingParameterEnabled()
+        {
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                GenerateUtcDateTime("2022-09-04 17:56:12.000")
+            );
+            mockStopWatch.ElapsedTicks.Returns<Int64>
+            (
+                ConvertMillisecondsToTicks(11),
+                ConvertMillisecondsToTicks(23),
+                ConvertMillisecondsToTicks(36),
+                ConvertMillisecondsToTicks(50),
+                ConvertMillisecondsToTicks(65),
+                ConvertMillisecondsToTicks(81)
+            );
+            testMetricLoggerBuffer = new CapturingMetricLoggerBuffer(mockBufferProcessingStrategy, false, mockDateTime, mockStopWatch);
+
+            testMetricLoggerBuffer.Start();
+            testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            testMetricLoggerBuffer.End(new MessageProcessingTime());
+            testMetricLoggerBuffer.End(new MessageProcessingTime());
+            testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            testMetricLoggerBuffer.End(new MessageProcessingTime());
+            testMetricLoggerBuffer.DequeueAndProcessMetricEvents();
+            testMetricLoggerBuffer.Stop();
+
+            mockBufferProcessingStrategy.Received(3).NotifyIntervalMetricEventBuffered();
+            mockBufferProcessingStrategy.Received(1).NotifyIntervalMetricEventBufferCleared();
+            Assert.AreEqual(2, testMetricLoggerBuffer.CapturedIntervalMetricEvents.Count);
+            Assert.IsInstanceOf(typeof(MessageProcessingTime), testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item1);
+            Assert.AreEqual(GenerateUtcDateTime("2022-09-04 17:56:12.023"), testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item2);
+            Assert.AreEqual(13, testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item3);
+            Assert.IsInstanceOf(typeof(MessageProcessingTime), testMetricLoggerBuffer.CapturedIntervalMetricEvents[1].Item1);
+            Assert.AreEqual(GenerateUtcDateTime("2022-09-04 17:56:12.065"), testMetricLoggerBuffer.CapturedIntervalMetricEvents[1].Item2);
+            Assert.AreEqual(16, testMetricLoggerBuffer.CapturedIntervalMetricEvents[1].Item3);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedCountMetricEvents.Count);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedAmountMetricEvents.Count);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedStatusMetricEvents.Count);
+        }
+
+        [Test]
+        public void CancelBegin()
+        {
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                GenerateUtcDateTime("2022-09-04 17:58:37.000")
+            );
+            mockStopWatch.ElapsedTicks.Returns<Int64>
+            (
+                ConvertMillisecondsToTicks(11),
+                ConvertMillisecondsToTicks(23),
+                ConvertMillisecondsToTicks(36),
+                ConvertMillisecondsToTicks(50)
+            );
+
+            testMetricLoggerBuffer.Start();
+            testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            testMetricLoggerBuffer.CancelBegin(new MessageProcessingTime());
+            testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            testMetricLoggerBuffer.End(new MessageProcessingTime());
+            testMetricLoggerBuffer.DequeueAndProcessMetricEvents();
+            testMetricLoggerBuffer.Stop();
+
+            mockBufferProcessingStrategy.Received(1).NotifyIntervalMetricEventBuffered();
+            mockBufferProcessingStrategy.Received(1).NotifyIntervalMetricEventBufferCleared();
+            Assert.AreEqual(1, testMetricLoggerBuffer.CapturedIntervalMetricEvents.Count);
+            Assert.IsInstanceOf(typeof(MessageProcessingTime), testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item1);
+            Assert.AreEqual(GenerateUtcDateTime("2022-09-04 17:58:37.036"), testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item2);
+            Assert.AreEqual(14, testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item3);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedCountMetricEvents.Count);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedAmountMetricEvents.Count);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedStatusMetricEvents.Count);
+        }
+
+        [Test]
+        public void CancelBegin_NonInterleavedModeIntervalMetricCheckingParameterEnabled()
+        {
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                GenerateUtcDateTime("2022-09-04 12:10:08.000")
+            );
+            mockStopWatch.ElapsedTicks.Returns<Int64>
+            (
+                ConvertMillisecondsToTicks(11),
+                ConvertMillisecondsToTicks(23),
+                ConvertMillisecondsToTicks(36)
+            );
+            testMetricLoggerBuffer = new CapturingMetricLoggerBuffer(mockBufferProcessingStrategy, false, mockDateTime, mockStopWatch);
+
+            testMetricLoggerBuffer.Start();
+            testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            testMetricLoggerBuffer.End(new MessageProcessingTime());
+            testMetricLoggerBuffer.CancelBegin(new MessageProcessingTime());
+            testMetricLoggerBuffer.DequeueAndProcessMetricEvents();
+            testMetricLoggerBuffer.Stop();
+
+            mockBufferProcessingStrategy.Received(1).NotifyIntervalMetricEventBuffered();
+            mockBufferProcessingStrategy.Received(1).NotifyIntervalMetricEventBufferCleared();
+            Assert.AreEqual(1, testMetricLoggerBuffer.CapturedIntervalMetricEvents.Count);
+            Assert.IsInstanceOf(typeof(MessageProcessingTime), testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item1);
+            Assert.AreEqual(GenerateUtcDateTime("2022-09-04 12:10:08.011"), testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item2);
+            Assert.AreEqual(12, testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item3);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedCountMetricEvents.Count);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedAmountMetricEvents.Count);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedStatusMetricEvents.Count);
+        }
 
         #region Private/Protected Methods
 

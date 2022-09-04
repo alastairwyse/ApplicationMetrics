@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+using System;
+
 namespace ApplicationMetrics.MetricLoggers
 {
     /// <summary>
@@ -44,18 +46,35 @@ namespace ApplicationMetrics.MetricLoggers
         {
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Begin(ApplicationMetrics.IntervalMetric)"]/*'/>
-        public void Begin(IntervalMetric intervalMetric)
+        // TODO: Fix up xml comments once InterfaceDocumentationComments.xml is properly updated
+
+        // <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Begin(ApplicationMetrics.IntervalMetric)"]/*'/>
+
+
+        public Guid Begin(IntervalMetric intervalMetric)
         {
+            return Guid.NewGuid();
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.End(ApplicationMetrics.IntervalMetric)"]/*'/>
+        // <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.End(ApplicationMetrics.IntervalMetric)"]/*'/>
+        
+        
         public void End(IntervalMetric intervalMetric)
         {
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.CancelBegin(ApplicationMetrics.IntervalMetric)"]/*'/>
+        public void End(Guid beginId, IntervalMetric intervalMetric)
+        {
+        }
+
+        // <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.CancelBegin(ApplicationMetrics.IntervalMetric)"]/*'/>
+
+
         public void CancelBegin(IntervalMetric intervalMetric)
+        {
+        }
+
+        public void CancelBegin(Guid beginId, IntervalMetric intervalMetric)
         {
         }
     }

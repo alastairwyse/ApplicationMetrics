@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+using System;
+
 namespace ApplicationMetrics
 {
     /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="T:ApplicationMetrics.IMetricLogger"]/*'/>
@@ -28,13 +30,46 @@ namespace ApplicationMetrics
         /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.Set(ApplicationMetrics.StatusMetric,System.Int64)"]/*'/>
         void Set(StatusMetric statusMetric, long value);
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.Begin(ApplicationMetrics.IntervalMetric)"]/*'/>
-        void Begin(IntervalMetric intervalMetric);
+        // TODO: Fix up xml comments once InterfaceDocumentationComments.xml is properly updated
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.End(ApplicationMetrics.IntervalMetric)"]/*'/>
+        // <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.Begin(ApplicationMetrics.IntervalMetric)"]/*'/>
+
+        /// <summary>
+        /// Records the starting of the specified interval metric event.
+        /// </summary>
+        /// <param name="intervalMetric">The interval metric that started.</param>
+        /// <returns>A unique id for the starting of the interval metric, which should be subsequently passed to the <see cref="IMetricLogger.End(Guid, IntervalMetric)"/> or <see cref="IMetricLogger.CancelBegin(Guid, IntervalMetric)"/> methods, when using the class in interleaved mode.</returns>
+        Guid Begin(IntervalMetric intervalMetric);
+
+        // <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.End(ApplicationMetrics.IntervalMetric)"]/*'/>
+
+
+        /// <summary>
+        /// Records the completion of the specified interval metric event when using the class in non-interleaved mode.
+        /// </summary>
+        /// <param name="intervalMetric">The interval metric that completed.</param>
         void End(IntervalMetric intervalMetric);
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.CancelBegin(ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <summary>
+        /// Records the completion of the specified interval metric event when using the class in interleaved mode.
+        /// </summary>
+        /// <param name="beginId">The id corresponding to the starting of the specified interval metric event (i.e. returned when the <see cref="IMetricLogger.Begin(IntervalMetric)"/> method was called).</param>
+        /// <param name="intervalMetric">The interval metric that completed.</param>
+        void End(Guid beginId, IntervalMetric intervalMetric);
+
+        // <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.CancelBegin(ApplicationMetrics.IntervalMetric)"]/*'/>
+
+        /// <summary>
+        /// Cancels the starting of the specified interval metric event when using the class in non-interleaved mode (e.g. in the case that an exception occurs between the starting and completion of the event).
+        /// </summary>
+        /// <param name="intervalMetric">The interval metric that should be cancelled.</param>
         void CancelBegin(IntervalMetric intervalMetric);
+
+        /// <summary>
+        /// Cancels the starting of the specified interval metric event when using the class in interleaved mode (e.g. in the case that an exception occurs between the starting and completion of the event).
+        /// </summary>
+        /// <param name="beginId">>The id corresponding to the starting of the specified interval metric event (i.e. returned when the <see cref="IMetricLogger.Begin(IntervalMetric)"/> method was called).</param>
+        /// <param name="intervalMetric">The interval metric that should be cancelled.</param>
+        void CancelBegin(Guid beginId, IntervalMetric intervalMetric);
     }
 }
