@@ -38,6 +38,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         private IConsole mockConsole;
         private IDateTime mockDateTime;
         private IStopwatch mockStopWatch;
+        private IGuidProvider mockGuidProvider;
         private ManualResetEvent workerThreadLoopIterationCompleteSignal;
         private LoopingWorkerThreadBufferProcessor bufferProcessor;
         private ConsoleMetricLogger testConsoleMetricLogger;
@@ -49,9 +50,10 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockConsole = Substitute.For<IConsole>();
             mockDateTime = Substitute.For<IDateTime>();
             mockStopWatch = Substitute.For<IStopwatch>();
+            mockGuidProvider = Substitute.For<IGuidProvider>();
             workerThreadLoopIterationCompleteSignal = new ManualResetEvent(false);
             bufferProcessor = new LoopingWorkerThreadBufferProcessor(10, workerThreadLoopIterationCompleteSignal, 1);
-            testConsoleMetricLogger = new ConsoleMetricLogger(bufferProcessor, true, mockConsole, mockDateTime, mockStopWatch);
+            testConsoleMetricLogger = new ConsoleMetricLogger(bufferProcessor, true, mockConsole, mockDateTime, mockStopWatch, mockGuidProvider);
         }
 
         [TearDown]
@@ -176,6 +178,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 81240000L,
                 91250000L
             );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 14, 22, 58, 05));
 
@@ -545,6 +548,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 19750000L,
                 19800000L
             );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 16, 23, 01, 17, 060));
 
@@ -585,6 +589,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 28500000L,
                 39750000L
             );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 16, 23, 01, 17, 060));
 
@@ -626,6 +631,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 // Returns for calls to LogIntervalOverTotalRunTimeAggregates()
                 6300
             );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 19, 17, 33, 51, 125));
 
@@ -669,6 +675,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 // Returns for calls to LogIntervalOverTotalRunTimeAggregates()
                 6300
             );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 19, 17, 33, 51, 125));
 

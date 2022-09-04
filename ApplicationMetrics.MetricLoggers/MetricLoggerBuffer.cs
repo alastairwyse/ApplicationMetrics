@@ -24,7 +24,10 @@ namespace ApplicationMetrics.MetricLoggers
     /// <summary>
     /// Base class which acts as a buffer for implementations of interface IMetricLogger.  Stores logged metrics events in queues, so as to minimise the time taken to call the logging methods.
     /// </summary>
-    /// <remarks>Derived classes must implement methods which process the buffered metric events (e.g. ProcessIntervalMetricEvent()).  These methods are called from a worker thread after dequeueing the buffered metric events.</remarks>
+    /// <remarks>
+    /// <para>Derived classes must implement methods which process the buffered metric events (e.g. ProcessIntervalMetricEvent()).  These methods are called from a worker thread after dequeueing the buffered metric events.</para>
+    /// <para>Since version 5.0.0, the class supports an 'interleaved' mode for interval metrics.  This allows multiple interval metrics of the same type to be started concurrently (e.g. to support scenarios where client code is running on multiple concurrent threads).  The <see cref="IMetricLogger.Begin(IntervalMetric)"/>, <see cref="IMetricLogger.End(Guid, IntervalMetric)"/>, and <see cref="IMetricLogger.CancelBegin(Guid, IntervalMetric)"/> methods support an optional <see cref="Guid"/> return value and parameter which is used to associate/link calls to those methods.  For backwards compatability the non-<see cref="Guid"/> versions of these methods are maintained.  The mode (interleaved or non-interleaved) is chosen on the first call to either the <see cref="IMetricLogger.End(Guid, IntervalMetric)"/> or <see cref="IMetricLogger.CancelBegin(Guid, IntervalMetric)"/> methods, selecting interleaved mode if the <see cref="Guid"/> overload versions of the methods are called, and non-interleaved if the non-<see cref="Guid"/> overload versions are called.  Once the mode is set, calling method overloads corresponding to the other mode will throw an exception, so client code must consistently call either the <see cref="Guid"/> or non-<see cref="Guid"/> overloads of these methods.  Non-interleaved mode may be deprecated in future versions, so it is recommended to migrate client code to support interleaved mode.</para>
+    /// </remarks>
     public abstract class MetricLoggerBuffer : IMetricLogger, IDisposable
     {
         // Queue objects 
@@ -35,7 +38,7 @@ namespace ApplicationMetrics.MetricLoggers
         /// <summary>Queue used to buffer status metrics.</summary>
         protected Queue<StatusMetricEventInstance> statusMetricEventQueue;
         /// <summary>Queue used to buffer interval metrics.</summary>
-        protected Queue<IntervalMetricEventInstance> intervalMetricEventQueue;
+        protected Queue<UniqueIntervalMetricEventInstance> intervalMetricEventQueue;
 
         // Lock objects for queues
         /// <summary>Lock object which should be set before dequeuing from queue countMetricEventQueue.</summary>
@@ -55,13 +58,19 @@ namespace ApplicationMetrics.MetricLoggers
         protected IDateTime dateTime;
         /// <summary>Used to measure elapsed time since starting the buffer processor.</summary>
         protected IStopwatch stopWatch;
+        /// <summary>Object which provides Guids.</summary>
+        protected IGuidProvider guidProvider;
+        /// <summary>Whether to support interleaving when processing interval metrics.  Set to null when the mode has not yet been determined (i.e. before the <see cref="IMetricLogger.End(Guid, IntervalMetric)"/> or <see cref="IMetricLogger.CancelBegin(Guid, IntervalMetric)"/> methods have been called).</summary>
+        protected Nullable<Boolean> interleavedIntervalMetricsMode;
         /// <summary>The timestamp at which the buffer processor was started.</summary>
         protected System.DateTime startTime;
         /// <summary>Indicates whether the object has been disposed.</summary>
         protected bool disposed;
 
-        // Dictionary object to temporarily store the start instance of any received interval metrics
+        // Dictionary object to temporarily store the start instance of any received interval metrics (when processing in non-interleaved mode)
         private Dictionary<Type, IntervalMetricEventInstance> startIntervalMetricEventStore;
+        // Dictionary object to temporarily store the start instance of any received interval metrics (when processing in interleaved mode)
+        private Dictionary<Guid, IntervalMetricEventInstance> startIntervalMetricUniqueEventStore;
         // Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed(e.g.End() method called before Begin()).
         private bool intervalMetricChecking;
 
@@ -75,7 +84,7 @@ namespace ApplicationMetrics.MetricLoggers
             countMetricEventQueue = new Queue<CountMetricEventInstance>();
             amountMetricEventQueue = new Queue<AmountMetricEventInstance>();
             statusMetricEventQueue = new Queue<StatusMetricEventInstance>();
-            intervalMetricEventQueue = new Queue<IntervalMetricEventInstance>();
+            intervalMetricEventQueue = new Queue<UniqueIntervalMetricEventInstance>();
             countMetricEventQueueLock = new object();
             amountMetricEventQueueLock = new object();
             statusMetricEventQueueLock = new object();
@@ -86,8 +95,11 @@ namespace ApplicationMetrics.MetricLoggers
             this.bufferProcessingStrategy.BufferProcessed += bufferProcessedEventHandler;
             dateTime = new StandardAbstraction.DateTime();
             stopWatch = new Stopwatch();
+            guidProvider = new DefaultGuidProvider();
 
+            interleavedIntervalMetricsMode = null;
             startIntervalMetricEventStore = new Dictionary<Type, IntervalMetricEventInstance>();
+            startIntervalMetricUniqueEventStore = new Dictionary<Guid, IntervalMetricEventInstance>();
             this.intervalMetricChecking = intervalMetricChecking;
         }
 
@@ -96,13 +108,15 @@ namespace ApplicationMetrics.MetricLoggers
         /// </summary>
         /// <param name="bufferProcessingStrategy">Object which implements a processing strategy for the buffers (queues).</param>
         /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).</param>
-        /// <param name="dateTime">A test (mock) DateTime object.</param>
-        /// <param name="stopWatch">A test (mock) Stopwatch object.</param>
-        protected MetricLoggerBuffer(IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking, IDateTime dateTime, IStopwatch stopWatch)
+        /// <param name="dateTime">A test (mock) <see cref="IDateTime"/> object.</param>
+        /// <param name="stopWatch">A test (mock) <see cref="IStopwatch"/> object.</param>
+        /// <param name="guidProvider">A test (mock) <see cref="IGuidProvider"/> object.</param>
+        protected MetricLoggerBuffer(IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking, IDateTime dateTime, IStopwatch stopWatch, IGuidProvider guidProvider)
             : this(bufferProcessingStrategy, intervalMetricChecking)
         {
             this.dateTime = dateTime;
             this.stopWatch = stopWatch;
+            this.guidProvider = guidProvider;
         }
 
         /// <summary>
@@ -172,10 +186,11 @@ namespace ApplicationMetrics.MetricLoggers
         {
             lock (intervalMetricEventQueueLock)
             {
-                intervalMetricEventQueue.Enqueue(new IntervalMetricEventInstance(intervalMetric, IntervalMetricEventTimePoint.Start, GetStopWatchUtcNow()));
-            }
+                Guid beginId = guidProvider.NewGuid();
+                intervalMetricEventQueue.Enqueue(new UniqueIntervalMetricEventInstance(beginId, intervalMetric, IntervalMetricEventTimePoint.Start, GetStopWatchUtcNow()));
 
-            throw new NotImplementedException();
+                return beginId;
+            }
         }
 
         // <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.End(ApplicationMetrics.IntervalMetric)"]/*'/>
@@ -183,15 +198,40 @@ namespace ApplicationMetrics.MetricLoggers
         
         public void End(IntervalMetric intervalMetric)
         {
+            if (interleavedIntervalMetricsMode.HasValue == false)
+            {
+                interleavedIntervalMetricsMode = false;
+            }
+            else
+            {
+                if (interleavedIntervalMetricsMode == true)
+                    throw new InvalidOperationException($"The overload of the {nameof(IMetricLogger.End)}() method without a {nameof(Guid)} parameter cannot be called when the metric logger is running in interleaved mode.");
+            }
+
             lock (intervalMetricEventQueueLock)
             {
-                intervalMetricEventQueue.Enqueue(new IntervalMetricEventInstance(intervalMetric, IntervalMetricEventTimePoint.End, GetStopWatchUtcNow()));
+                intervalMetricEventQueue.Enqueue(new UniqueIntervalMetricEventInstance(Guid.Empty, intervalMetric, IntervalMetricEventTimePoint.End, GetStopWatchUtcNow()));
                 bufferProcessingStrategy.NotifyIntervalMetricEventBuffered();
             }
         }
 
         public void End(Guid beginId, IntervalMetric intervalMetric)
         {
+            if (interleavedIntervalMetricsMode.HasValue == false)
+            {
+                interleavedIntervalMetricsMode = true;
+            }
+            else
+            {
+                if (interleavedIntervalMetricsMode == false)
+                    throw new InvalidOperationException($"The overload of the {nameof(IMetricLogger.End)}() method with a {nameof(Guid)} parameter cannot be called when the metric logger is running in non-interleaved mode.");
+            }
+
+            lock (intervalMetricEventQueueLock)
+            {
+                intervalMetricEventQueue.Enqueue(new UniqueIntervalMetricEventInstance(beginId, intervalMetric, IntervalMetricEventTimePoint.End, GetStopWatchUtcNow()));
+                bufferProcessingStrategy.NotifyIntervalMetricEventBuffered();
+            }
         }
 
         // <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.CancelBegin(ApplicationMetrics.IntervalMetric)"]/*'/>
@@ -199,15 +239,38 @@ namespace ApplicationMetrics.MetricLoggers
 
         public void CancelBegin(IntervalMetric intervalMetric)
         {
+            if (interleavedIntervalMetricsMode.HasValue == false)
+            {
+                interleavedIntervalMetricsMode = false;
+            }
+            else
+            {
+                if (interleavedIntervalMetricsMode == true)
+                    throw new InvalidOperationException($"The overload of the {nameof(IMetricLogger.CancelBegin)}() method without a {nameof(Guid)} parameter cannot be called when the metric logger is running in interleaved mode.");
+            }
+
             lock (intervalMetricEventQueueLock)
             {
-                intervalMetricEventQueue.Enqueue(new IntervalMetricEventInstance(intervalMetric, IntervalMetricEventTimePoint.Cancel, GetStopWatchUtcNow()));
+                intervalMetricEventQueue.Enqueue(new UniqueIntervalMetricEventInstance(Guid.Empty, intervalMetric, IntervalMetricEventTimePoint.Cancel, GetStopWatchUtcNow()));
             }
         }
 
         public void CancelBegin(Guid beginId, IntervalMetric intervalMetric)
         {
+            if (interleavedIntervalMetricsMode.HasValue == false)
+            {
+                interleavedIntervalMetricsMode = true;
+            }
+            else
+            {
+                if (interleavedIntervalMetricsMode == false)
+                    throw new InvalidOperationException($"The overload of the {nameof(IMetricLogger.CancelBegin)}() method with a {nameof(Guid)} parameter cannot be called when the metric logger is running in non-interleaved mode.");
+            }
 
+            lock (intervalMetricEventQueueLock)
+            {
+                intervalMetricEventQueue.Enqueue(new UniqueIntervalMetricEventInstance(beginId, intervalMetric, IntervalMetricEventTimePoint.Cancel, GetStopWatchUtcNow()));
+            }
         }
 
         #region Abstract Methods
@@ -323,14 +386,14 @@ namespace ApplicationMetrics.MetricLoggers
         /// </summary>
         private void DequeueAndProcessIntervalMetricEvents()
         {
-            var tempQueue = new Queue<IntervalMetricEventInstance>();
+            var tempQueue = new Queue<UniqueIntervalMetricEventInstance>();
             var intervalMetricsAndDurations = new Queue<Tuple<IntervalMetricEventInstance, Int64>>();
 
             // Lock the interval metric queue and move all items to the temporary queue
             lock (intervalMetricEventQueueLock)
             {
                 Interlocked.Exchange(ref tempQueue, intervalMetricEventQueue);
-                intervalMetricEventQueue = new Queue<IntervalMetricEventInstance>();
+                intervalMetricEventQueue = new Queue<UniqueIntervalMetricEventInstance>();
                 bufferProcessingStrategy.NotifyIntervalMetricEventBufferCleared();
             }
 
@@ -343,24 +406,7 @@ namespace ApplicationMetrics.MetricLoggers
                 {
                     // If the current interval metric represents the start of the interval, put it in the dictionary object 
                     case IntervalMetricEventTimePoint.Start:
-                        if (startIntervalMetricEventStore.ContainsKey(currentIntervalMetricEvent.MetricType) == true)
-                        {
-                            // If a start interval event of this type was already received and checking is enabled, throw an exception
-                            if (intervalMetricChecking == true)
-                            {
-                                throw new InvalidOperationException("Received duplicate begin '" + currentIntervalMetricEvent.Metric.Name + "' metrics.");
-                            }
-                            // If checking is not enabled, replace the currently stored begin interval event with the new one
-                            else
-                            {
-                                startIntervalMetricEventStore.Remove(currentIntervalMetricEvent.MetricType);
-                                startIntervalMetricEventStore.Add(currentIntervalMetricEvent.MetricType, currentIntervalMetricEvent);
-                            }
-                        }
-                        else
-                        {
-                            startIntervalMetricEventStore.Add(currentIntervalMetricEvent.MetricType, currentIntervalMetricEvent);
-                        }
+                        ProcessStartIntervalMetricEvent(currentIntervalMetricEvent);
                         break;
 
                     // If the current interval metric represents the end of the interval, call the method to process it
@@ -411,6 +457,58 @@ namespace ApplicationMetrics.MetricLoggers
             }
 
             ProcessIntervalMetricEvents(intervalMetricsAndDurations);
+        }
+
+        /// <summary>
+        /// Processes an <see cref="IntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.Start">'Start'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see> as part of the call the to <see cref="MetricLoggerBuffer.DequeueAndProcessIntervalMetricEvents">DequeueAndProcessIntervalMetricEvents</see>() method.
+        /// </summary>
+        /// <param name="intervalMetricEventInstance">The <see cref="IntervalMetricEventInstance"/> to process.</param>
+        private void ProcessStartIntervalMetricEvent(IntervalMetricEventInstance intervalMetricEventInstance)
+        {
+            if (interleavedIntervalMetricsMode == false)
+            {
+                if (startIntervalMetricEventStore.ContainsKey(intervalMetricEventInstance.MetricType) == true)
+                {
+                    // If a start interval event of this type was already received and checking is enabled, throw an exception
+                    if (intervalMetricChecking == true)
+                    {
+                        throw new InvalidOperationException("Received duplicate begin '" + intervalMetricEventInstance.Metric.Name + "' metrics.");
+                    }
+                    // If checking is not enabled, replace the currently stored begin interval event with the new one
+                    else
+                    {
+                        startIntervalMetricEventStore.Remove(intervalMetricEventInstance.MetricType);
+                        startIntervalMetricEventStore.Add(intervalMetricEventInstance.MetricType, intervalMetricEventInstance);
+                    }
+                }
+                else
+                {
+                    startIntervalMetricEventStore.Add(intervalMetricEventInstance.MetricType, intervalMetricEventInstance);
+                }
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        /// <summary>
+        /// Processes an <see cref="IntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.End">'End'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see> as part of the call the to <see cref="MetricLoggerBuffer.DequeueAndProcessIntervalMetricEvents">DequeueAndProcessIntervalMetricEvents</see>() method.
+        /// </summary>
+        /// <param name="intervalMetricEventInstance">The <see cref="IntervalMetricEventInstance"/> to process.</param>
+        /// <param name="intervalMetricsAndDurations">A queue containing the processed <see cref="IntervalMetricEventInstance">IntervalMetricEventInstances</see> and their durations.</param>
+        private void ProcessEndIntervalMetricEvent(IntervalMetricEventInstance intervalMetricEventInstance, Queue<Tuple<IntervalMetricEventInstance, Int64>> intervalMetricsAndDurations)
+        {
+
+        }
+
+        /// <summary>
+        /// Processes an <see cref="IntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.Cancel">'Cancel'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see> as part of the call the to <see cref="MetricLoggerBuffer.DequeueAndProcessIntervalMetricEvents">DequeueAndProcessIntervalMetricEvents</see>() method.
+        /// </summary>
+        /// <param name="intervalMetricEventInstance">The <see cref="IntervalMetricEventInstance"/> to process.</param>
+        private void ProcessCancelIntervalMetricEvent(IntervalMetricEventInstance intervalMetricEventInstance)
+        {
+
         }
 
         // TODO: Ideally the below method should be called at the top of all public/protected methods however, concerned about performance impact as these methods are called frequently
@@ -487,6 +585,33 @@ namespace ApplicationMetrics.MetricLoggers
                     return eventTime;
                 }
             }
+
+            /// <summary>
+            /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.MetricLoggerBuffer+MetricEventInstance class.
+            /// </summary>
+            /// <param name="metric">The metric that occurred.</param>
+            /// <param name="eventTime">The date and time the event occurred, expressed as UTC.</param>
+            protected MetricEventInstance(T metric, System.DateTime eventTime)
+            {
+                this.metric = metric;
+                this.eventTime = eventTime;
+            }
+        }
+
+        /// <summary>
+        /// Container class which stores information about the occurrence of a count metric event.
+        /// </summary>
+        protected class CountMetricEventInstance : MetricEventInstance<CountMetric>
+        {
+            /// <summary>
+            /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.MetricLoggerBuffer+CountMetricEventInstance class.
+            /// </summary>
+            /// <param name="countMetric">The metric which occurred.</param>
+            /// <param name="eventTime">The date and time the metric event occurred, expressed as UTC.</param>
+            public CountMetricEventInstance(CountMetric countMetric, System.DateTime eventTime)
+                : base(countMetric, eventTime)
+            {
+            }
         }
 
         /// <summary>
@@ -512,27 +637,9 @@ namespace ApplicationMetrics.MetricLoggers
             /// <param name="amount">The amount associated with the instance of the amount metric.</param>
             /// <param name="eventTime">The date and time the metric event occurred, expressed as UTC.</param>
             public AmountMetricEventInstance(AmountMetric amountMetric, long amount, System.DateTime eventTime)
+                : base(amountMetric, eventTime)
             {
-                base.metric = amountMetric;
                 this.amount = amount;
-                base.eventTime = eventTime;
-            }
-        }
-
-        /// <summary>
-        /// Container class which stores information about the occurrence of a count metric event.
-        /// </summary>
-        protected class CountMetricEventInstance : MetricEventInstance<CountMetric>
-        {
-            /// <summary>
-            /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.MetricLoggerBuffer+CountMetricEventInstance class.
-            /// </summary>
-            /// <param name="countMetric">The metric which occurred.</param>
-            /// <param name="eventTime">The date and time the metric event occurred, expressed as UTC.</param>
-            public CountMetricEventInstance(CountMetric countMetric, System.DateTime eventTime)
-            {
-                base.metric = countMetric;
-                base.eventTime = eventTime;
             }
         }
 
@@ -559,10 +666,9 @@ namespace ApplicationMetrics.MetricLoggers
             /// <param name="value">The value associated with the instance of the status metric.</param>
             /// <param name="eventTime">The date and time the metric event occurred, expressed as UTC.</param>
             public StatusMetricEventInstance(StatusMetric statusMetric, long value, System.DateTime eventTime)
+                : base(statusMetric, eventTime)
             {
-                base.metric = statusMetric;
                 this.value = value;
-                base.eventTime = eventTime;
             }
         }
 
@@ -589,10 +695,39 @@ namespace ApplicationMetrics.MetricLoggers
             /// <param name="timePoint">Whether the event represents the start or the end of the interval metric.</param>
             /// <param name="eventTime">The date and time the metric event started, expressed as UTC.</param>
             public IntervalMetricEventInstance(IntervalMetric intervalMetric, IntervalMetricEventTimePoint timePoint, System.DateTime eventTime)
+                : base(intervalMetric, eventTime)
             {
-                base.metric = intervalMetric;
                 this.timePoint = timePoint;
-                base.eventTime = eventTime;
+            }
+        }
+
+        /// <summary>
+        /// Container class which stores information about the occurrence of an interval metric event and includes a <see cref="Guid"/> property to allow the event to be uniquely identified within a collection of the same type of interval metric.
+        /// </summary>
+        protected class UniqueIntervalMetricEventInstance : IntervalMetricEventInstance
+        {
+            /// <summary>A unique id representing the starting of the interval metric event (should match the <see cref="Guid"/> returned from the <see cref="IMetricLogger.Begin(IntervalMetric)"/> method).</summary>
+            protected Guid beginId;
+
+            /// <summary>
+            /// A unique id representing the starting of the interval metric event (should match the <see cref="Guid"/> returned from the <see cref="IMetricLogger.Begin(IntervalMetric)"/> method).
+            /// </summary>
+            public Guid BeginId
+            {
+                get { return beginId; }
+            }
+
+            /// <summary>
+            /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.MetricLoggerBuffer+UniqueIntervalMetricEventInstance class.
+            /// </summary>
+            /// <param name="beginId">A unique id representing the starting of the interval metric event (should match the <see cref="Guid"/> returned from the <see cref="IMetricLogger.Begin(IntervalMetric)"/> method).</param>
+            /// <param name="intervalMetric">The metric which occurred.</param>
+            /// <param name="timePoint">Whether the event represents the start or the end of the interval metric.</param>
+            /// <param name="eventTime">The date and time the metric event started, expressed as UTC.</param>
+            public UniqueIntervalMetricEventInstance(Guid beginId, IntervalMetric intervalMetric, IntervalMetricEventTimePoint timePoint, System.DateTime eventTime)
+                : base(intervalMetric, timePoint, eventTime)
+            {
+                this.beginId = beginId;
             }
         }
 

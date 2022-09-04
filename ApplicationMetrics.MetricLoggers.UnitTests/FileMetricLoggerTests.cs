@@ -37,6 +37,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         private IStreamWriter mockStreamWriter;
         private IDateTime mockDateTime;
         private IStopwatch mockStopWatch;
+        private IGuidProvider mockGuidProvider;
         private ManualResetEvent loopIterationCompleteSignal;
         private LoopingWorkerThreadBufferProcessor bufferProcessor;
         private FileMetricLogger testFileMetricLogger;
@@ -48,9 +49,10 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockStreamWriter = Substitute.For<IStreamWriter>();
             mockDateTime = Substitute.For<IDateTime>();
             mockStopWatch = Substitute.For<IStopwatch>();
+            mockGuidProvider = Substitute.For<IGuidProvider>();
             loopIterationCompleteSignal = new ManualResetEvent(false);
             bufferProcessor = new LoopingWorkerThreadBufferProcessor(10, loopIterationCompleteSignal, 2000);
-            testFileMetricLogger = new FileMetricLogger('|', bufferProcessor, true, mockStreamWriter, mockDateTime, mockStopWatch);
+            testFileMetricLogger = new FileMetricLogger('|', bufferProcessor, true, mockStreamWriter, mockDateTime, mockStopWatch, mockGuidProvider);
         }
 
         [TearDown]
@@ -315,6 +317,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 1267967500000L,
                 1267977850000L
             );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
 
             testFileMetricLogger.Start();
             testFileMetricLogger.Begin(new DiskReadTime());
@@ -360,6 +363,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 1267967500000L,
                 1267977850000L
             );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
             mockStreamWriter.When(streamWriter => streamWriter.WriteLine(timeStamp3.Add(utcOffset).ToString(dateTimeFormat) + " | " + new MessageProcessingTime().Name + " | " + 0)).Throw(new Exception("Mock worker thread exception."));
 
             testFileMetricLogger.Start();

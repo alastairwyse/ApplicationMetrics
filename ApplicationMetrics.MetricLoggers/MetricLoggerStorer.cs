@@ -23,7 +23,10 @@ namespace ApplicationMetrics.MetricLoggers
     /// <summary>
     /// Base class which buffers and totals instances of metric events.
     /// </summary>
-    /// <remarks>Derived classes must implement methods which log the totals of metric events (e.g. LogCountMetricTotal()).  These methods are called from a worker thread after dequeueing the buffered metric events and calculating and storing their totals.</remarks>
+    /// <remarks>
+    /// <para>Derived classes must implement methods which log the totals of metric events (e.g. LogCountMetricTotal()).  These methods are called from a worker thread after dequeueing the buffered metric events and calculating and storing their totals.</para>
+    /// <para>Since version 5.0.0, the class supports an 'interleaved' mode for interval metrics.  This allows multiple interval metrics of the same type to be started concurrently (e.g. to support scenarios where client code is running on multiple concurrent threads).  The <see cref="IMetricLogger.Begin(IntervalMetric)"/>, <see cref="IMetricLogger.End(Guid, IntervalMetric)"/>, and <see cref="IMetricLogger.CancelBegin(Guid, IntervalMetric)"/> methods support an optional <see cref="Guid"/> return value and parameter which is used to associate/link calls to those methods.  For backwards compatability the non-<see cref="Guid"/> versions of these methods are maintained.  The mode (interleaved or non-interleaved) is chosen on the first call to either the <see cref="IMetricLogger.End(Guid, IntervalMetric)"/> or <see cref="IMetricLogger.CancelBegin(Guid, IntervalMetric)"/> methods, selecting interleaved mode if the <see cref="Guid"/> overload versions of the methods are called, and non-interleaved if the non-<see cref="Guid"/> overload versions are called.  Once the mode is set, calling method overloads corresponding to the other mode will throw an exception, so client code must consistently call either the <see cref="Guid"/> or non-<see cref="Guid"/> overloads of these methods.  Non-interleaved mode may be deprecated in future versions, so it is recommended to migrate client code to support interleaved mode.</para>
+    /// </remarks>
     public abstract class MetricLoggerStorer : MetricLoggerBuffer
     {
         /// <summary>Dictionary which stores the type of a count metric, and a container object holding the number of instances of that type of count metric event.</summary>
@@ -51,10 +54,11 @@ namespace ApplicationMetrics.MetricLoggers
         /// </summary>
         /// <param name="bufferProcessingStrategy">Object which implements a processing strategy for the buffers (queues).</param>
         /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).</param>
-        /// <param name="dateTime">A test (mock) DateTime object.</param>
-        /// <param name="stopWatch">A test (mock) Stopwatch object.</param>
-        protected MetricLoggerStorer(IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking, IDateTime dateTime, IStopwatch stopWatch)
-            : base(bufferProcessingStrategy, intervalMetricChecking, dateTime, stopWatch)
+        /// <param name="dateTime">A test (mock) <see cref="IDateTime"/> object.</param>
+        /// <param name="stopWatch">A test (mock) <see cref="IStopwatch"/> object.</param>
+        /// <param name="guidProvider">A test (mock) <see cref="IGuidProvider"/> object.</param>
+        protected MetricLoggerStorer(IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking, IDateTime dateTime, IStopwatch stopWatch, IGuidProvider guidProvider)
+            : base(bufferProcessingStrategy, intervalMetricChecking, dateTime, stopWatch, guidProvider)
         {
             InitialisePrivateMembers();
         }

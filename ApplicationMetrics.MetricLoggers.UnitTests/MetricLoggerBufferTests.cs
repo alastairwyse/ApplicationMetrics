@@ -29,50 +29,11 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
     /// </summary>
     public class MetricLoggerBufferTests
     {
-        // Duplicate Begin()s in non-interleaved
-
-        // End with no begin
-
-        // Cancel with no begin
-        //   And also where nothing is currently stored... different path in code
-
-        // Buffer process between begin and end
-
-        // BeginCancelBeginBufferProcessingBetweenBeginAndCancelBeginSuccessTests()
-
-        // Different types of metrics are interleaved
-
-        // Begin/End with 'intervalMetricChecking' set to false
-
-        // Begin/Cancel test
-
-        // CancelBeginQueueMaintenanceSuccessTests()
-        //   Tests that the rebuilding of the interval metric queue performed by the CancelBegin() method preserves the queue order for the interval metrics that are not cancelled
-        //   Note this test was created specifically to test a previous implementation of MetricLoggerBuffer where cancelling of an interval metric was performed by the main thread.  
-        //   In the current implementation of MetricLoggerBuffer, cancelling is performed by the buffer processing strategy worker thread, and hence this test is equivalent to test CancelBeginSuccessTests().
-        //   However, it will be kept for extra thoroughness of testing.
-
-        // CancelBeginLongQueueSuccessTests()
-        //   Tests the case where several successive start and end interval metric events exist in the interval metric queue when CancelBegin() is called
-        //   Ensures only the most recent end interval metric is removed from the queue
-        //   Note this test was created specifically to test a previous implementation of MetricLoggerBuffer where cancelling of an interval metric was performed by the main thread.  
-        //   In the current implementation of MetricLoggerBuffer, cancelling is performed by the buffer processing strategy worker thread, and hence this test is equivalent to test CancelBeginSuccessTests().
-        //   However, it will be kept for extra thoroughness of testing.
-
-        // CancelBeginStartIntervalMetricInEventStoreSuccessTests()
-        // Tests the case where CancelBegin() is called, and the start interval metric to cancel is stored in the start interval metric event store
-        //   Expects that the start interval metric is correctly removed from the start interval metric event store
-        //   Note this test was created specifically to test a previous implementation of MetricLoggerBuffer where cancelling of an interval metric was performed by the main thread.  
-        //   In the current implementation of MetricLoggerBuffer, cancelling is performed by the buffer processing strategy worker thread, and hence this test is equivalent to test CancelBeginSuccessTests().
-        //   However, it will be kept for extra thoroughness of testing.
-
-        // Cancel with no begin 'intervalMetricChecking' set to false
-
-
         private IBufferProcessingStrategy mockBufferProcessingStrategy;
         private IConsole mockConsole;
         private IDateTime mockDateTime;
         private IStopwatch mockStopWatch;
+        private IGuidProvider mockGuidProvider;
         private CapturingMetricLoggerBuffer testMetricLoggerBuffer;
 
         [SetUp]
@@ -82,7 +43,8 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockConsole = Substitute.For<IConsole>();
             mockDateTime = Substitute.For<IDateTime>();
             mockStopWatch = Substitute.For<IStopwatch>();
-            testMetricLoggerBuffer = new CapturingMetricLoggerBuffer(mockBufferProcessingStrategy, true, mockDateTime, mockStopWatch);
+            mockGuidProvider = Substitute.For<IGuidProvider>();
+            testMetricLoggerBuffer = new CapturingMetricLoggerBuffer(mockBufferProcessingStrategy, true, mockDateTime, mockStopWatch, mockGuidProvider);
         }
 
         [TearDown]
@@ -242,6 +204,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 ConvertMillisecondsToTicks(250),
                 ConvertMillisecondsToTicks(510)
             );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
 
             testMetricLoggerBuffer.Start();
             testMetricLoggerBuffer.Begin(new MessageProcessingTime());
@@ -277,6 +240,122 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
+        public void End_NonInterleavedModeAndCallingInterleavedMethodOverload()
+        {
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                // Returns for calls to Start()
+                GenerateUtcDateTime("2022-09-04 20:39:55.000")
+            );
+            mockStopWatch.ElapsedTicks.Returns<Int64>
+            (
+                // Returns for calls to Begin()
+                ConvertMillisecondsToTicks(11),
+                ConvertMillisecondsToTicks(22),
+                ConvertMillisecondsToTicks(34)
+            );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
+
+            testMetricLoggerBuffer.Start(); 
+            testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            testMetricLoggerBuffer.End(new MessageProcessingTime());
+            Guid beginId = testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            var e = Assert.Throws<InvalidOperationException>(delegate
+            {
+                testMetricLoggerBuffer.End(beginId, new MessageProcessingTime());
+            });
+
+            Assert.That(e.Message, Does.StartWith($"The overload of the End() method with a Guid parameter cannot be called when the metric logger is running in non-interleaved mode."));
+        }
+
+        [Test]
+        public void End_InterleavedModeAndCallingNonInterleavedMethodOverload()
+        {
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                // Returns for calls to Start()
+                GenerateUtcDateTime("2022-09-04 20:39:55.000")
+            );
+            mockStopWatch.ElapsedTicks.Returns<Int64>
+            (
+                // Returns for calls to Begin()
+                ConvertMillisecondsToTicks(11),
+                ConvertMillisecondsToTicks(22),
+                ConvertMillisecondsToTicks(34)
+            );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
+
+            testMetricLoggerBuffer.Start();
+            Guid beginId = testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            testMetricLoggerBuffer.End(beginId, new MessageProcessingTime());
+            testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            var e = Assert.Throws<InvalidOperationException>(delegate
+            {
+                testMetricLoggerBuffer.End(new MessageProcessingTime());
+            });
+
+            Assert.That(e.Message, Does.StartWith($"The overload of the End() method without a Guid parameter cannot be called when the metric logger is running in interleaved mode."));
+        }
+
+        [Test]
+        public void CancelBegin_NonInterleavedModeAndCallingInterleavedMethodOverload()
+        {
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                // Returns for calls to Start()
+                GenerateUtcDateTime("2022-09-04 20:42:56.000")
+            );
+            mockStopWatch.ElapsedTicks.Returns<Int64>
+            (
+                // Returns for calls to Begin()
+                ConvertMillisecondsToTicks(11),
+                ConvertMillisecondsToTicks(22),
+                ConvertMillisecondsToTicks(34)
+            );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
+
+            testMetricLoggerBuffer.Start();
+            testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            testMetricLoggerBuffer.CancelBegin(new MessageProcessingTime());
+            Guid beginId = testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            var e = Assert.Throws<InvalidOperationException>(delegate
+            {
+                testMetricLoggerBuffer.CancelBegin(beginId, new MessageProcessingTime());
+            });
+
+            Assert.That(e.Message, Does.StartWith($"The overload of the CancelBegin() method with a Guid parameter cannot be called when the metric logger is running in non-interleaved mode."));
+        }
+
+        [Test]
+        public void CancelBegin_InterleavedModeAndCallingNonInterleavedMethodOverload()
+        {
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                // Returns for calls to Start()
+                GenerateUtcDateTime("2022-09-04 20:42:57.000")
+            );
+            mockStopWatch.ElapsedTicks.Returns<Int64>
+            (
+                // Returns for calls to Begin()
+                ConvertMillisecondsToTicks(11),
+                ConvertMillisecondsToTicks(22),
+                ConvertMillisecondsToTicks(34)
+            );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
+
+            testMetricLoggerBuffer.Start();
+            Guid beginId = testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            testMetricLoggerBuffer.CancelBegin(beginId, new MessageProcessingTime());
+            testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            var e = Assert.Throws<InvalidOperationException>(delegate
+            {
+                testMetricLoggerBuffer.CancelBegin(new MessageProcessingTime());
+            });
+
+            Assert.That(e.Message, Does.StartWith($"The overload of the CancelBegin() method without a Guid parameter cannot be called when the metric logger is running in interleaved mode."));
+        }
+
+        [Test]
         public void CancelBegin_NonInterleavedModeAndCancelIntervalMetricWithNoBegin()
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
@@ -289,6 +368,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 ConvertMillisecondsToTicks(510),
                 ConvertMillisecondsToTicks(770)
             );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
 
             testMetricLoggerBuffer.Start();
             testMetricLoggerBuffer.Begin(new MessageProcessingTime());
@@ -339,6 +419,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 ConvertMillisecondsToTicks(230),
                 ConvertMillisecondsToTicks(360)
             );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
 
             testMetricLoggerBuffer.Start();
             testMetricLoggerBuffer.Begin(new DiskReadTime());
@@ -378,6 +459,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 ConvertMillisecondsToTicks(230),
                 ConvertMillisecondsToTicks(360)
             );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
 
             testMetricLoggerBuffer.Start();
             testMetricLoggerBuffer.Begin(new MessageProcessingTime());
@@ -415,6 +497,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 ConvertMillisecondsToTicks(55),
                 ConvertMillisecondsToTicks(71)
             );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
 
             testMetricLoggerBuffer.Start();
             testMetricLoggerBuffer.Begin(new DiskReadTime());
@@ -458,6 +541,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 ConvertMillisecondsToTicks(36),
                 ConvertMillisecondsToTicks(50)
             );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
 
             testMetricLoggerBuffer.Start();
             testMetricLoggerBuffer.Begin(new MessageProcessingTime());
@@ -497,7 +581,8 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 ConvertMillisecondsToTicks(65),
                 ConvertMillisecondsToTicks(81)
             );
-            testMetricLoggerBuffer = new CapturingMetricLoggerBuffer(mockBufferProcessingStrategy, false, mockDateTime, mockStopWatch);
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
+            testMetricLoggerBuffer = new CapturingMetricLoggerBuffer(mockBufferProcessingStrategy, false, mockDateTime, mockStopWatch, mockGuidProvider);
 
             testMetricLoggerBuffer.Start();
             testMetricLoggerBuffer.Begin(new MessageProcessingTime());
@@ -537,6 +622,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 ConvertMillisecondsToTicks(36),
                 ConvertMillisecondsToTicks(50)
             );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
 
             testMetricLoggerBuffer.Start();
             testMetricLoggerBuffer.Begin(new MessageProcessingTime());
@@ -570,7 +656,8 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 ConvertMillisecondsToTicks(23),
                 ConvertMillisecondsToTicks(36)
             );
-            testMetricLoggerBuffer = new CapturingMetricLoggerBuffer(mockBufferProcessingStrategy, false, mockDateTime, mockStopWatch);
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
+            testMetricLoggerBuffer = new CapturingMetricLoggerBuffer(mockBufferProcessingStrategy, false, mockDateTime, mockStopWatch, mockGuidProvider);
 
             testMetricLoggerBuffer.Start();
             testMetricLoggerBuffer.Begin(new MessageProcessingTime());
@@ -683,8 +770,9 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).</param>
             /// <param name="dateTime">A test (mock) DateTime object.</param>
             /// <param name="stopWatch">A test (mock) Stopwatch object.</param>
-            public CapturingMetricLoggerBuffer(IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking, IDateTime dateTime, IStopwatch stopWatch)
-                : base(bufferProcessingStrategy, intervalMetricChecking, dateTime, stopWatch)
+            /// <param name="guidProvider">A test (mock) <see cref="IGuidProvider"/> object.</param>
+            public CapturingMetricLoggerBuffer(IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking, IDateTime dateTime, IStopwatch stopWatch, IGuidProvider guidProvider)
+                : base(bufferProcessingStrategy, intervalMetricChecking, dateTime, stopWatch, guidProvider)
             {
                 capturedCountMetricEvents = new List<Tuple<CountMetric, System.DateTime>>();
                 capturedAmountMetricEvents = new List<Tuple<AmountMetric, System.DateTime, Int64>>();
