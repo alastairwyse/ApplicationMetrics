@@ -46,34 +46,28 @@ namespace ApplicationMetrics.MetricLoggers
         {
         }
 
-        // TODO: Fix up xml comments once InterfaceDocumentationComments.xml is properly updated
-
-        // <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Begin(ApplicationMetrics.IntervalMetric)"]/*'/>
-
-
+        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.Begin(ApplicationMetrics.IntervalMetric)"]/*'/>
         public Guid Begin(IntervalMetric intervalMetric)
         {
             return Guid.NewGuid();
         }
 
-        // <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.End(ApplicationMetrics.IntervalMetric)"]/*'/>
-        
-        
+        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.End(ApplicationMetrics.IntervalMetric)"]/*'/>
         public void End(IntervalMetric intervalMetric)
         {
         }
 
+        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.End(System.Guid,ApplicationMetrics.IntervalMetric)"]/*'/>
         public void End(Guid beginId, IntervalMetric intervalMetric)
         {
         }
 
-        // <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.CancelBegin(ApplicationMetrics.IntervalMetric)"]/*'/>
-
-
+        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.CancelBegin(ApplicationMetrics.IntervalMetric)"]/*'/>
         public void CancelBegin(IntervalMetric intervalMetric)
         {
         }
 
+        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.CancelBegin(System.Guid,ApplicationMetrics.IntervalMetric)"]/*'/>
         public void CancelBegin(Guid beginId, IntervalMetric intervalMetric)
         {
         }

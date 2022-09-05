@@ -177,11 +177,7 @@ namespace ApplicationMetrics.MetricLoggers
             }
         }
 
-        // TODO: Fix up xml comments once InterfaceDocumentationComments.xml is properly updated
-
-        // <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Begin(ApplicationMetrics.IntervalMetric)"]/*'/>
-
-
+        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.Begin(ApplicationMetrics.IntervalMetric)"]/*'/>
         public Guid Begin(IntervalMetric intervalMetric)
         {
             lock (intervalMetricEventQueueLock)
@@ -193,9 +189,8 @@ namespace ApplicationMetrics.MetricLoggers
             }
         }
 
-        // <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.End(ApplicationMetrics.IntervalMetric)"]/*'/>
-        
-        
+        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.End(ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <exception cref="InvalidOperationException">This method overload cannot be called when the metric logger is running in interleaved mode.</exception>
         public void End(IntervalMetric intervalMetric)
         {
             if (interleavedIntervalMetricsMode.HasValue == false)
@@ -215,6 +210,8 @@ namespace ApplicationMetrics.MetricLoggers
             }
         }
 
+        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.End(System.Guid,ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <exception cref="InvalidOperationException">This method overload cannot be called when the metric logger is running in non-interleaved mode.</exception>
         public void End(Guid beginId, IntervalMetric intervalMetric)
         {
             if (interleavedIntervalMetricsMode.HasValue == false)
@@ -234,9 +231,8 @@ namespace ApplicationMetrics.MetricLoggers
             }
         }
 
-        // <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.CancelBegin(ApplicationMetrics.IntervalMetric)"]/*'/>
-
-
+        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.CancelBegin(ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <exception cref="InvalidOperationException">This method overload cannot be called when the metric logger is running in interleaved mode.</exception>
         public void CancelBegin(IntervalMetric intervalMetric)
         {
             if (interleavedIntervalMetricsMode.HasValue == false)
@@ -255,6 +251,8 @@ namespace ApplicationMetrics.MetricLoggers
             }
         }
 
+        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.CancelBegin(System.Guid,ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <exception cref="InvalidOperationException">This method overload cannot be called when the metric logger is running in non-interleaved mode.</exception>
         public void CancelBegin(Guid beginId, IntervalMetric intervalMetric)
         {
             if (interleavedIntervalMetricsMode.HasValue == false)
@@ -400,7 +398,7 @@ namespace ApplicationMetrics.MetricLoggers
             // Process all items in the temporary queue
             while (tempQueue.Count > 0)
             {
-                IntervalMetricEventInstance currentIntervalMetricEvent = tempQueue.Dequeue();
+                UniqueIntervalMetricEventInstance currentIntervalMetricEvent = tempQueue.Dequeue();
 
                 switch (currentIntervalMetricEvent.TimePoint)
                 {
@@ -411,47 +409,12 @@ namespace ApplicationMetrics.MetricLoggers
 
                     // If the current interval metric represents the end of the interval, call the method to process it
                     case IntervalMetricEventTimePoint.End:
-                        if (startIntervalMetricEventStore.ContainsKey(currentIntervalMetricEvent.MetricType) == true)
-                        {
-                            TimeSpan intervalDuration = currentIntervalMetricEvent.EventTime.Subtract(startIntervalMetricEventStore[currentIntervalMetricEvent.MetricType].EventTime);
-                            double intervalDurationMillisecondsDouble = intervalDuration.TotalMilliseconds;
-                            // If the duration is less then 0 set back to 0, as the start time could be after the end time in the case the metric event occurred across a system time update
-                            if (intervalDurationMillisecondsDouble < 0)
-                            {
-                                intervalDurationMillisecondsDouble = 0;
-                            }
-                            // Convert double to an Int64
-                            //   There should not be a risk of overflow here, as the number of milliseconds between DateTime.MinValue and DateTime.MaxValue is 315537897600000, which is a valid Int64 value
-                            Int64 intervalDurationMillisecondsInt64 = Convert.ToInt64(intervalDurationMillisecondsDouble);
-                            intervalMetricsAndDurations.Enqueue(new Tuple<IntervalMetricEventInstance, Int64>(startIntervalMetricEventStore[currentIntervalMetricEvent.MetricType], intervalDurationMillisecondsInt64));
-                            startIntervalMetricEventStore.Remove(currentIntervalMetricEvent.MetricType);
-                        }
-                        else
-                        {
-                            // If no corresponding start interval event of this type exists and checking is enabled, throw an exception
-                            if (intervalMetricChecking == true)
-                            {
-                                throw new InvalidOperationException("Received end '" + currentIntervalMetricEvent.Metric.Name + "' with no corresponding start interval metric.");
-                            }
-                            // If checking is not enabled discard the interval event
-                        }
+                        ProcessEndIntervalMetricEvent(currentIntervalMetricEvent, intervalMetricsAndDurations);
                         break;
 
                     // If the current interval metric represents the cancelling of the interval, remove it from the dictionary object 
                     case IntervalMetricEventTimePoint.Cancel:
-                        if (startIntervalMetricEventStore.ContainsKey(currentIntervalMetricEvent.MetricType) == true)
-                        {
-                            startIntervalMetricEventStore.Remove(currentIntervalMetricEvent.MetricType);
-                        }
-                        else
-                        {
-                            // If no corresponding start interval event of this type exists and checking is enabled, throw an exception
-                            if (intervalMetricChecking == true)
-                            {
-                                throw new InvalidOperationException("Received cancel '" + currentIntervalMetricEvent.Metric.Name + "' with no corresponding start interval metric.");
-                            }
-                            // If checking is not enabled discard the interval event
-                        }
+                        ProcessCancelIntervalMetricEvent(currentIntervalMetricEvent);
                         break;
                 }
             }
@@ -460,19 +423,20 @@ namespace ApplicationMetrics.MetricLoggers
         }
 
         /// <summary>
-        /// Processes an <see cref="IntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.Start">'Start'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see> as part of the call the to <see cref="MetricLoggerBuffer.DequeueAndProcessIntervalMetricEvents">DequeueAndProcessIntervalMetricEvents</see>() method.
+        /// Processes a <see cref="UniqueIntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.Start">'Start'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see> as part of the call the to <see cref="MetricLoggerBuffer.DequeueAndProcessIntervalMetricEvents">DequeueAndProcessIntervalMetricEvents</see>() method.
         /// </summary>
-        /// <param name="intervalMetricEventInstance">The <see cref="IntervalMetricEventInstance"/> to process.</param>
-        private void ProcessStartIntervalMetricEvent(IntervalMetricEventInstance intervalMetricEventInstance)
+        /// <param name="intervalMetricEventInstance">The <see cref="UniqueIntervalMetricEventInstance"/> to process.</param>
+        private void ProcessStartIntervalMetricEvent(UniqueIntervalMetricEventInstance intervalMetricEventInstance)
         {
-            if (interleavedIntervalMetricsMode == false)
+            // Need to handle the case that 'interleavedIntervalMetricsMode' has not yet been set
+            if (interleavedIntervalMetricsMode.HasValue == false || interleavedIntervalMetricsMode == false)
             {
                 if (startIntervalMetricEventStore.ContainsKey(intervalMetricEventInstance.MetricType) == true)
                 {
                     // If a start interval event of this type was already received and checking is enabled, throw an exception
                     if (intervalMetricChecking == true)
                     {
-                        throw new InvalidOperationException("Received duplicate begin '" + intervalMetricEventInstance.Metric.Name + "' metrics.");
+                        throw new InvalidOperationException($"Received duplicate begin '{intervalMetricEventInstance.Metric.Name}' metrics.");
                     }
                     // If checking is not enabled, replace the currently stored begin interval event with the new one
                     else
@@ -486,29 +450,109 @@ namespace ApplicationMetrics.MetricLoggers
                     startIntervalMetricEventStore.Add(intervalMetricEventInstance.MetricType, intervalMetricEventInstance);
                 }
             }
-            else
+            if (interleavedIntervalMetricsMode.HasValue == false || interleavedIntervalMetricsMode == true)
             {
-                throw new NotImplementedException();
+                startIntervalMetricUniqueEventStore.Add(intervalMetricEventInstance.BeginId, intervalMetricEventInstance);
             }
         }
 
         /// <summary>
-        /// Processes an <see cref="IntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.End">'End'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see> as part of the call the to <see cref="MetricLoggerBuffer.DequeueAndProcessIntervalMetricEvents">DequeueAndProcessIntervalMetricEvents</see>() method.
+        /// Processes an <see cref="UniqueIntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.End">'End'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see> as part of the call the to <see cref="MetricLoggerBuffer.DequeueAndProcessIntervalMetricEvents">DequeueAndProcessIntervalMetricEvents</see>() method.
         /// </summary>
-        /// <param name="intervalMetricEventInstance">The <see cref="IntervalMetricEventInstance"/> to process.</param>
+        /// <param name="intervalMetricEventInstance">The <see cref="UniqueIntervalMetricEventInstance"/> to process.</param>
         /// <param name="intervalMetricsAndDurations">A queue containing the processed <see cref="IntervalMetricEventInstance">IntervalMetricEventInstances</see> and their durations.</param>
-        private void ProcessEndIntervalMetricEvent(IntervalMetricEventInstance intervalMetricEventInstance, Queue<Tuple<IntervalMetricEventInstance, Int64>> intervalMetricsAndDurations)
+        private void ProcessEndIntervalMetricEvent(UniqueIntervalMetricEventInstance intervalMetricEventInstance, Queue<Tuple<IntervalMetricEventInstance, Int64>> intervalMetricsAndDurations)
         {
+            if (interleavedIntervalMetricsMode == false)
+            {
+                if (startIntervalMetricEventStore.ContainsKey(intervalMetricEventInstance.MetricType) == true)
+                {
+                    TimeSpan intervalDuration = intervalMetricEventInstance.EventTime.Subtract(startIntervalMetricEventStore[intervalMetricEventInstance.MetricType].EventTime);
+                    double intervalDurationMillisecondsDouble = intervalDuration.TotalMilliseconds;
+                    // If the duration is less then 0 set back to 0, as the start time could be after the end time in the case the metric event occurred across a system time update
+                    if (intervalDurationMillisecondsDouble < 0)
+                    {
+                        intervalDurationMillisecondsDouble = 0;
+                    }
+                    // Convert double to an Int64
+                    //   There should not be a risk of overflow here, as the number of milliseconds between DateTime.MinValue and DateTime.MaxValue is 315537897600000, which is a valid Int64 value
+                    Int64 intervalDurationMillisecondsInt64 = Convert.ToInt64(intervalDurationMillisecondsDouble);
+                    intervalMetricsAndDurations.Enqueue(new Tuple<IntervalMetricEventInstance, Int64>(startIntervalMetricEventStore[intervalMetricEventInstance.MetricType], intervalDurationMillisecondsInt64));
+                    startIntervalMetricEventStore.Remove(intervalMetricEventInstance.MetricType);
+                }
+                else
+                {
+                    // If no corresponding start interval event of this type exists and checking is enabled, throw an exception
+                    if (intervalMetricChecking == true)
+                    {
+                        throw new InvalidOperationException($"Received end '{intervalMetricEventInstance.Metric.Name}' with no corresponding start interval metric.");
+                    }
+                    // If checking is not enabled discard the interval event
+                }
+            }
+            else
+            {
+                if (startIntervalMetricUniqueEventStore.ContainsKey(intervalMetricEventInstance.BeginId) == true)
+                {
+                    if (startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId].MetricType != intervalMetricEventInstance.MetricType)
+                        throw new ArgumentException($"Metric started with BeginId '{intervalMetricEventInstance.BeginId}' was a '{startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId].Metric.Name}' metric, but {nameof(IMetricLogger.End)}() method was called with a '{intervalMetricEventInstance.Metric.Name}' metric.");
 
+                    TimeSpan intervalDuration = intervalMetricEventInstance.EventTime.Subtract(startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId].EventTime);
+                    double intervalDurationMillisecondsDouble = intervalDuration.TotalMilliseconds;
+                    // If the duration is less then 0 set back to 0, as the start time could be after the end time in the case the metric event occurred across a system time update
+                    if (intervalDurationMillisecondsDouble < 0)
+                    {
+                        intervalDurationMillisecondsDouble = 0;
+                    }
+                    // Convert double to an Int64
+                    //   There should not be a risk of overflow here, as the number of milliseconds between DateTime.MinValue and DateTime.MaxValue is 315537897600000, which is a valid Int64 value
+                    Int64 intervalDurationMillisecondsInt64 = Convert.ToInt64(intervalDurationMillisecondsDouble);
+                    intervalMetricsAndDurations.Enqueue(new Tuple<IntervalMetricEventInstance, Int64>(startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId], intervalDurationMillisecondsInt64));
+                    startIntervalMetricUniqueEventStore.Remove(intervalMetricEventInstance.BeginId);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Received end '{intervalMetricEventInstance.Metric.Name}' with {nameof(UniqueIntervalMetricEventInstance.BeginId)} '{intervalMetricEventInstance.BeginId}' with no corresponding start interval metric.");
+                }
+            }
         }
 
         /// <summary>
-        /// Processes an <see cref="IntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.Cancel">'Cancel'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see> as part of the call the to <see cref="MetricLoggerBuffer.DequeueAndProcessIntervalMetricEvents">DequeueAndProcessIntervalMetricEvents</see>() method.
+        /// Processes an <see cref="UniqueIntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.Cancel">'Cancel'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see> as part of the call the to <see cref="MetricLoggerBuffer.DequeueAndProcessIntervalMetricEvents">DequeueAndProcessIntervalMetricEvents</see>() method.
         /// </summary>
-        /// <param name="intervalMetricEventInstance">The <see cref="IntervalMetricEventInstance"/> to process.</param>
-        private void ProcessCancelIntervalMetricEvent(IntervalMetricEventInstance intervalMetricEventInstance)
+        /// <param name="intervalMetricEventInstance">The <see cref="UniqueIntervalMetricEventInstance"/> to process.</param>
+        private void ProcessCancelIntervalMetricEvent(UniqueIntervalMetricEventInstance intervalMetricEventInstance)
         {
+            if (interleavedIntervalMetricsMode == false)
+            {
+                if (startIntervalMetricEventStore.ContainsKey(intervalMetricEventInstance.MetricType) == true)
+                {
+                    startIntervalMetricEventStore.Remove(intervalMetricEventInstance.MetricType);
+                }
+                else
+                {
+                    // If no corresponding start interval event of this type exists and checking is enabled, throw an exception
+                    if (intervalMetricChecking == true)
+                    {
+                        throw new InvalidOperationException("Received cancel '" + intervalMetricEventInstance.Metric.Name + "' with no corresponding start interval metric.");
+                    }
+                    // If checking is not enabled discard the interval event
+                }
+            }
+            else
+            {
+                if (startIntervalMetricUniqueEventStore.ContainsKey(intervalMetricEventInstance.BeginId) == true)
+                {
+                    if (startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId].MetricType != intervalMetricEventInstance.MetricType)
+                        throw new ArgumentException($"Metric started with BeginId '{intervalMetricEventInstance.BeginId}' was a '{startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId].Metric.Name}' metric, but {nameof(IMetricLogger.CancelBegin)}() method was called with a '{intervalMetricEventInstance.Metric.Name}' metric.");
 
+                    startIntervalMetricUniqueEventStore.Remove(intervalMetricEventInstance.BeginId);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Received cancel '{intervalMetricEventInstance.Metric.Name}' with {nameof(UniqueIntervalMetricEventInstance.BeginId)} '{intervalMetricEventInstance.BeginId}' with no corresponding start interval metric.");
+                }
+            }
         }
 
         // TODO: Ideally the below method should be called at the top of all public/protected methods however, concerned about performance impact as these methods are called frequently
