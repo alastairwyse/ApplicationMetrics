@@ -38,7 +38,7 @@ namespace ApplicationMetrics.MetricLoggers
         /// <param name="separatorCharacter">The character to use to separate fields (e.g. date/time stamp, metric name) in the file.</param>
         /// <param name="filePath">The full path of the file to write the metric events to.</param>
         /// <param name="bufferProcessingStrategy">Object which implements a processing strategy for the buffers (queues).</param>
-        /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).</param>
+        /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).  Note that this parameter only has an effect when running in 'non-interleaved' mode.</param>
         public FileMetricLogger(char separatorCharacter, string filePath, IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking)
             : base(bufferProcessingStrategy, intervalMetricChecking)
         {
@@ -52,7 +52,7 @@ namespace ApplicationMetrics.MetricLoggers
         /// <param name="separatorCharacter">The character to use to separate fields (e.g. date/time stamp, metric name) in the file.</param>
         /// <param name="filePath">The full path of the file to write the metric events to.</param>
         /// <param name="bufferProcessingStrategy">Object which implements a processing strategy for the buffers (queues).</param>
-        /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).</param>
+        /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).  Note that this parameter only has an effect when running in 'non-interleaved' mode.</param>
         /// <param name="appendToFile">Whether to append to an existing file (if it exists) or overwrite.  A value of true causes appending.</param>
         /// <param name="fileEncoding">The character encoding to use in the file.</param>
         public FileMetricLogger(char separatorCharacter, string filePath, IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking, bool appendToFile, Encoding fileEncoding)
@@ -67,7 +67,7 @@ namespace ApplicationMetrics.MetricLoggers
         /// </summary>
         /// <param name="separatorCharacter">The character to use to separate fields (e.g. date/time stamp, metric name) in the file.</param>
         /// <param name="bufferProcessingStrategy">Object which implements a processing strategy for the buffers (queues).</param>
-        /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).</param>
+        /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).  Note that this parameter only has an effect when running in 'non-interleaved' mode.</param>
         /// <param name="streamWriter">A test (mock) stream writer.</param>
         /// <param name="dateTime">A test (mock) <see cref="IDateTime"/> object.</param>
         /// <param name="stopWatch">A test (mock) <see cref="IStopwatch"/> object.</param>

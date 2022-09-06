@@ -32,7 +32,7 @@ namespace ApplicationMetrics.MetricLoggers
         /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.ConsoleMetricLogger class.
         /// </summary>
         /// <param name="bufferProcessingStrategy">Object which implements a processing strategy for the buffers (queues).</param>
-        /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).</param>
+        /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).  Note that this parameter only has an effect when running in 'non-interleaved' mode.</param>
         public ConsoleMetricLogger(IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking)
             : base(bufferProcessingStrategy, intervalMetricChecking)
         {
@@ -43,7 +43,7 @@ namespace ApplicationMetrics.MetricLoggers
         /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.ConsoleMetricLogger class.  Note this is an additional constructor to facilitate unit tests, and should not be used to instantiate the class under normal conditions.
         /// </summary>
         /// <param name="bufferProcessingStrategy">Object which implements a processing strategy for the buffers (queues).</param>
-        /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).</param>
+        /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).  Note that this parameter only has an effect when running in 'non-interleaved' mode.</param>
         /// <param name="console">A test (mock) console object.</param>
         /// <param name="dateTime">A test (mock) <see cref="IDateTime"/> object.</param>
         /// <param name="stopWatch">A test (mock) <see cref="IStopwatch"/> object.</param>

@@ -8,7 +8,7 @@ ApplicationMetrics provides simple interfaces and classes to allow capturing met
 4. To provide additional implementation of metric loggers and viewers for files, console, and relational databases, plus base classes to allow consumers to easily provide their own implementations of metric loggers and viewers†.
 
 \* Note that the PerformanceCounterMetricLogger class which was used to view metrics through the Windows Performance Monitor, has been moved to a [separate project](https://github.com/alastairwyse/ApplicationMetrics.MetricLoggers.WindowsPerformanceCounter) since this project was migrated to .NET Standard.  
-† Note that the [MicrosoftAccessMetricLogger](https://github.com/alastairwyse/ApplicationMetrics/blob/1.5.0.0/ApplicationMetrics/MicrosoftAccessMetricLogger.cs) and [MicrosoftAccessMetricLoggerImplementation](https://github.com/alastairwyse/ApplicationMetrics/blob/1.5.0.0/ApplicationMetrics/MicrosoftAccessMetricLoggerImplementation.cs) classes have been deprecated as of version 2.0.0, but still serve as an example of implementing a metric logger that writes to a relational database
+† The [MetricLoggers.SqlServer](https://github.com/alastairwyse/ApplicationMetrics.MetricLoggers.SqlServer) project serves as an example of implementing a metric logger that writes to a relational database
 
 #### Getting Started
 
@@ -34,7 +34,7 @@ Metrics are defined, by deriving from the CountMetric, AmountMetric, StatusMetri
   </tr>
   <tr>
     <td valign="top">IntervalMetric</td>
-    <td>Used to record the time taken for an event to complete (e.g. total time taken to send a message to a remote system).  This is calculated by capturing the start and end times of an IntervalMetric event.</td>
+    <td>Used to record the time taken for an event to complete (e.g. total time taken to send a message to a remote system).  This is calculated by capturing the start and end times of an IntervalMetric event.  The default implementation captures IntervalMetrics in milliseconds.</td>
   </tr>
 </table>
 
@@ -46,7 +46,7 @@ class MessageSent : CountMetric
     public MessageSent()
     {
         base.name = "MessageSent";
-        base.description = "The number of messages sent";
+        base.description = "A message was sent";
     }
 }
 
@@ -84,7 +84,7 @@ public class MessageSender
 
     public void Send(String message)
     {
-        metricLogger.Begin(new MessageSendTime());
+        Guid beginId = metricLogger.Begin(new MessageSendTime());
 
         // Call private method to perform the send
         try
@@ -93,11 +93,11 @@ public class MessageSender
         }
         catch (Exception e)
         {
-            metricLogger.CancelBegin(new MessageSendTime());
+            metricLogger.CancelBegin(beginId, new MessageSendTime());
             throw e;
         }
 
-        metricLogger.End(new MessageSendTime());
+        metricLogger.End(beginId, new MessageSendTime());
         metricLogger.Increment(new MessageSent());
         metricLogger.Add(new MessageSize(), message.Length);
     }
@@ -141,8 +141,11 @@ AverageMessageSize: 5910.676328502415
 MessagesSentPerSecond: 2.41545893719806
 ```
 
+##### 'Interleaved' Interval Metrics
+Since version 5.0.0 the MetricLoggerBuffer class (and its subclasses) supports 'interleaving' of interval metrics... i.e. allowing multiple interval metrics of the same type to be in a begun/started state at the same time (as would occur if methods Begin() &gt; Begin() &gt; End() &gt; End() were called in sequence for the same interval metric).  This is especially important when the client application is logging metrics from multiple threads.  This is facilitated by the Begin() method returning a unique Guid, which should subsequently be passed to the matching End() or CancelBegin() method.  For backwards (i.e. prior to version 5.0.0) compatibility, the former versions of the End() and CancelBegin() methods which *don't* accept a Guid are still maintained, as is the 'intervalMetricChecking' constructor parameter (which worked around the issue of not supporting interleaving by not throwing exceptions if interleaved interval metrics logging calls were received).  Depending on whether the first call to the End() or CancelBegin() methods includes the Guid parameter or not, the interleaving mode is selected accordingly... i.e. either interleaved (newer, including the Guid as a parameter) or non-interleaved (older, omitting the Guid).  Once the mode is set, calling method overloads corresponding to the other mode will throw an exception, so client code must consistently call either the Guid or non-Guid overloads of these methods.  Non-interleaved mode may be deprecated in future versions, so it is recommended to migrate client code to support interleaved mode.
+
 #### Links
-The documentation below was written for version 1.* of ApplicationMetrics.  Minor implementation details may have changed in versions 2.0.0 and above, however the basic principles and use cases documented are still valid.
+The documentation below was written for version 1.* of ApplicationMetrics.  Minor implementation details may have changed in versions 2.0.0 and above, however the basic principles and use cases documented are still valid.  Note also that this documentation demonstrates the older 'non-interleaved' method of logging interval metrics.
 
 Full documentation for the project...<br>
 [http://www.alastairwyse.net/methodinvocationremoting/application-metrics.html](http://www.alastairwyse.net/methodinvocationremoting/application-metrics.html)
@@ -156,6 +159,12 @@ A detailed sample implementation...<br>
   <tr>
     <td><b>Version</b></td>
     <td><b>Changes</b></td>
+  </tr>
+    <tr>
+    <td valign="top">5.0.0</td>
+    <td>  
+      Added support for 'interleaved' interval metrics.
+    </td>
   </tr>
   <tr>
     <td valign="top">4.0.0</td>

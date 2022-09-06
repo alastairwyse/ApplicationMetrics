@@ -1239,7 +1239,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.UnitTests.MetricLoggerBufferTests+CapturingMetricLoggerBuffer class.
             /// </summary>
             /// <param name="bufferProcessingStrategy">Object which implements a processing strategy for the buffers (queues).</param>
-            /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).</param>
+            /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).  Note that this parameter only has an effect when running in 'non-interleaved' mode.</param>
             /// <remarks>This constructor should not be used.</remarks>
             public CapturingMetricLoggerBuffer(IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking)
                 : base(bufferProcessingStrategy, intervalMetricChecking)
@@ -1251,7 +1251,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.UnitTests.MetricLoggerBufferTests+CapturingMetricLoggerBuffer class.
             /// </summary>
             /// <param name="bufferProcessingStrategy">Object which implements a processing strategy for the buffers (queues).</param>
-            /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).</param>
+            /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).  Note that this parameter only has an effect when running in 'non-interleaved' mode.</param>
             /// <param name="dateTime">A test (mock) DateTime object.</param>
             /// <param name="stopWatch">A test (mock) Stopwatch object.</param>
             /// <param name="guidProvider">A test (mock) <see cref="IGuidProvider"/> object.</param>
