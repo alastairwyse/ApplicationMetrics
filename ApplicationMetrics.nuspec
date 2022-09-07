@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>ApplicationMetrics</id>
-    <version>4.0.0</version>
+    <version>5.0.0</version>
     <authors>Alastair Wyse</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">Apache-2.0</license>
@@ -12,8 +12,8 @@
 
 ApplicationMetrics includes several implementations of metric logger classes which write metrics and instrumentation information to files, and the console.  It also contains base classes which allow users to easily create metric loggers for logging to persistent data stores.</description>
     <summary>ApplicationMetrics provides interfaces and classes to allow simple logging of metric and instrumentation events from a client application</summary>
-    <releaseNotes>Moved the 'Amount' property/parameter on the AmountMetric class and the 'Value' property/parameter on the StatusMetric class to be parameters of the Add() and Set() methods (respectively) on the IMetricLogger interface.</releaseNotes>
-    <copyright>Copyright © Alastair Wyse 2021</copyright>
+    <releaseNotes>Added support for 'interleaved' interval metrics.</releaseNotes>
+    <copyright>Copyright © Alastair Wyse 2022</copyright>
     <tags>metric metrics instrumentation client application counter statistics</tags>
     <icon>images\ApplicationMetrics.png</icon>
     <repository type="git" url="https://github.com/alastairwyse/ApplicationMetrics/" />
