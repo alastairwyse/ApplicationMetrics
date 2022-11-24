@@ -162,7 +162,13 @@ A detailed sample implementation...<br>
     <td><b>Version</b></td>
     <td><b>Changes</b></td>
   </tr>
-    <tr>
+  <tr>
+    <td valign="top">5.1.0</td>
+    <td>  
+      Updated the WorkerThreadBufferProcessorBase class to use ExceptionDispatchInfo to rethrow exceptions from the worker thread to the main thread, to better preserve the state and context of when the exception occurred.
+    </td>
+  </tr>
+  <tr>
     <td valign="top">5.0.0</td>
     <td>  
       Added support for 'interleaved' interval metrics.

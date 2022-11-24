@@ -16,6 +16,7 @@
 
 using System;
 using System.Threading;
+using System.Runtime.ExceptionServices;
 
 namespace ApplicationMetrics.MetricLoggers
 {
@@ -34,8 +35,8 @@ namespace ApplicationMetrics.MetricLoggers
         private int intervalMetricEventsBuffered;
         /// <summary>Worker thread which implements the strategy to process the contents of the buffers.</summary>
         private Thread bufferProcessingWorkerThread;
-        /// <summary>Set with any exception which occurrs on the worker thread.  Null if no exception has occurred.</summary>
-        private Exception processingException;
+        /// <summary>Set with any exception and state/context information which occurrs on the worker thread.  Null if no exception has occurred.</summary>
+        private ExceptionDispatchInfo processingExceptionDispatchInfo;
         /// <summary>Whether a stop request has been received.</summary>
         protected volatile bool stopRequestReceived;
         /// <summary>Whether any metric events remaining in the buffers when the Stop() method is called should be processed.</summary>
@@ -46,11 +47,11 @@ namespace ApplicationMetrics.MetricLoggers
         protected bool disposed;
 
         /// <summary>
-        /// Contains an exception which occurred on the worker thread during buffer processing.  Null if no exception has occurred.
+        /// Contains an exception and state/context information which occurred on the worker thread during buffer processing.  Null if no exception has occurred.
         /// </summary>
-        protected Exception ProcessingException
+        protected ExceptionDispatchInfo ProcessingExceptionDispatchInfo
         {
-            get { return processingException; }
+            get { return processingExceptionDispatchInfo; }
         }
 
         /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="E:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.BufferProcessed"]/*'/>
@@ -65,7 +66,7 @@ namespace ApplicationMetrics.MetricLoggers
             amountMetricEventsBuffered = 0;
             statusMetricEventsBuffered = 0;
             intervalMetricEventsBuffered = 0;
-            processingException = null;
+            processingExceptionDispatchInfo = null;
             processRemainingBufferredMetricsOnStop = true;
             loopIterationCompleteSignal = null;
             disposed = false;
@@ -184,10 +185,10 @@ namespace ApplicationMetrics.MetricLoggers
                     catch (Exception e)
                     {
                         var wrappedException = new Exception($"{exceptionMessagePrefix} {DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff zzz")}.", e);
-                        Interlocked.Exchange(ref processingException, wrappedException);
+                        Interlocked.Exchange(ref processingExceptionDispatchInfo, ExceptionDispatchInfo.Capture(wrappedException));
                     }
                     // If no exception has occurred, and 'processRemainingBufferredMetricsOnStop' is set true, process any remaining metric events
-                    if (processingException == null && TotalMetricEventsBufferred > 0 && processRemainingBufferredMetricsOnStop == true)
+                    if (processingExceptionDispatchInfo == null && TotalMetricEventsBufferred > 0 && processRemainingBufferredMetricsOnStop == true)
                     {
                         try
                         {
@@ -196,7 +197,7 @@ namespace ApplicationMetrics.MetricLoggers
                         catch (Exception e)
                         {
                             var wrappedException = new Exception($"{exceptionMessagePrefix} {DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff zzz")}.", e);
-                            Interlocked.Exchange(ref processingException, wrappedException);
+                            Interlocked.Exchange(ref processingExceptionDispatchInfo, ExceptionDispatchInfo.Capture(wrappedException));
                         }
                     }
                     if (loopIterationCompleteSignal != null)
@@ -223,9 +224,9 @@ namespace ApplicationMetrics.MetricLoggers
         /// </summary>
         protected void CheckAndThrowProcessingException()
         {
-            if (processingException != null)
+            if (processingExceptionDispatchInfo != null)
             {
-                throw processingException;
+                processingExceptionDispatchInfo.Throw();
             }
         }
 
