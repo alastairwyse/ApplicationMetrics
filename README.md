@@ -91,10 +91,10 @@ public class MessageSender
         {
             SendMessage(message);
         }
-        catch (Exception e)
+        catch
         {
             metricLogger.CancelBegin(beginId, new MessageSendTime());
-            throw e;
+            throw;
         }
 
         metricLogger.End(beginId, new MessageSendTime());
