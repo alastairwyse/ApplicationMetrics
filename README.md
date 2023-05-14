@@ -141,6 +141,10 @@ AverageMessageSize: 5910.676328502415
 MessagesSentPerSecond: 2.41545893719806
 ```
 
+##### 5) Filtering metrics
+
+## TODO
+
 #### 'Interleaved' Interval Metrics
 Since version 5.0.0 the MetricLoggerBuffer class (and its subclasses) supports 'interleaving' of interval metrics... i.e. allowing multiple interval metrics of the same type to be in a begun/started state at the same time (as would occur if methods Begin() &gt; Begin() &gt; End() &gt; End() were called in sequence for the same interval metric).  This is especially important when the client application is logging metrics from multiple threads.  This is facilitated by the Begin() method returning a unique Guid, which should subsequently be passed to the matching End() or CancelBegin() method.  For backwards (i.e. prior to version 5.0.0) compatibility, the former versions of the End() and CancelBegin() methods which *don't* accept a Guid are still maintained, as is the 'intervalMetricChecking' constructor parameter (which worked around the issue of not supporting interleaving by not throwing exceptions if interleaved interval metrics logging calls were received).  Depending on whether the first call to the End() or CancelBegin() methods includes the Guid parameter or not, the interleaving mode is selected accordingly... i.e. either interleaved (newer, including the Guid as a parameter) or non-interleaved (older, omitting the Guid).  Once the mode is set, calling method overloads corresponding to the other mode will throw an exception, so client code must consistently call either the Guid or non-Guid overloads of these methods.  
 
@@ -161,6 +165,14 @@ A detailed sample implementation...<br>
   <tr>
     <td><b>Version</b></td>
     <td><b>Changes</b></td>
+  </tr>
+  <tr>
+    <td valign="top">6.0.0</td>
+    <td>  
+      Added constructor parameter 'intervalMetricBaseTimeUnit' metric logger constructors.  Allows interval metrics to be logged in either milliseconds (former default) or nanoseconds (new option), to more accurately log interval metrics for high performance client applications.<br />
+      Added SizeLimitedLoopingWorkerThreadHybridBufferProcessor class... an implementation of IBufferProcessingStrategy which processes the buffers when either the total number of buffered metric events reaches a pre-defined limit or a specified looping interval expires, whichever occurs first.<br />
+      Added 'Filters' project/namespace, and 3 filter implementations (MetricLoggerExclusionFilter, MetricLoggerInclusionFilter, MetricLoggerTypeFilter) which can be used in a decorator pattern in front of metric loggers.
+    </td>
   </tr>
   <tr>
     <td valign="top">5.1.0</td>

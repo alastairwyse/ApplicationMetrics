@@ -32,9 +32,11 @@ namespace ApplicationMetrics.MetricLoggers
         /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.ConsoleMetricLogger class.
         /// </summary>
         /// <param name="bufferProcessingStrategy">Object which implements a processing strategy for the buffers (queues).</param>
+        /// <param name="intervalMetricBaseTimeUnit">The base time unit to use to log interval metrics.</param>
         /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).  Note that this parameter only has an effect when running in 'non-interleaved' mode.</param>
-        public ConsoleMetricLogger(IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking)
-            : base(bufferProcessingStrategy, intervalMetricChecking)
+        /// <remarks>The class uses a <see cref="Stopwatch"/> to calculate and log interval metrics.  Since the smallest unit of time supported by Stopwatch is a tick (100 nanoseconds), the smallest level of granularity supported when constructor parameter 'intervalMetricBaseTimeUnit' is set to <see cref="IntervalMetricBaseTimeUnit.Nanosecond"/> is 100 nanoseconds.</remarks>
+        public ConsoleMetricLogger(IBufferProcessingStrategy bufferProcessingStrategy, IntervalMetricBaseTimeUnit intervalMetricBaseTimeUnit, bool intervalMetricChecking)
+            : base(bufferProcessingStrategy, intervalMetricBaseTimeUnit, intervalMetricChecking)
         {
             console = new StandardAbstraction.Console();
         }
@@ -43,22 +45,22 @@ namespace ApplicationMetrics.MetricLoggers
         /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.ConsoleMetricLogger class.  Note this is an additional constructor to facilitate unit tests, and should not be used to instantiate the class under normal conditions.
         /// </summary>
         /// <param name="bufferProcessingStrategy">Object which implements a processing strategy for the buffers (queues).</param>
+        /// <param name="intervalMetricBaseTimeUnit">The base time unit to use to log interval metrics.</param>
         /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).  Note that this parameter only has an effect when running in 'non-interleaved' mode.</param>
         /// <param name="console">A test (mock) console object.</param>
         /// <param name="dateTime">A test (mock) <see cref="IDateTime"/> object.</param>
         /// <param name="stopWatch">A test (mock) <see cref="IStopwatch"/> object.</param>
         /// <param name="guidProvider">A test (mock) <see cref="IGuidProvider"/> object.</param>
-        public ConsoleMetricLogger(IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking, IConsole console, IDateTime dateTime, IStopwatch stopWatch, IGuidProvider guidProvider)
-            : base(bufferProcessingStrategy, intervalMetricChecking, dateTime, stopWatch, guidProvider)
+        /// <remarks>This constructor is included to facilitate unit testing.</remarks>
+        public ConsoleMetricLogger(IBufferProcessingStrategy bufferProcessingStrategy, IntervalMetricBaseTimeUnit intervalMetricBaseTimeUnit, bool intervalMetricChecking, IConsole console, IDateTime dateTime, IStopwatch stopWatch, IGuidProvider guidProvider)
+            : base(bufferProcessingStrategy, intervalMetricBaseTimeUnit, intervalMetricChecking, dateTime, stopWatch, guidProvider)
         {
             this.console = console;
         }
 
         #region Base Class Method Implementations
 
-        /// <summary>
-        /// Dequeues and logs metric events stored in the internal buffer, and logs any defined metric aggregates.
-        /// </summary>
+        /// <inheritdoc/>
         protected override void DequeueAndProcessMetricEvents()
         {
             console.Clear();

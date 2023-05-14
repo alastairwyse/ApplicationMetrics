@@ -42,24 +42,26 @@ namespace ApplicationMetrics.MetricLoggers
 
         // Lock objects for queues
         /// <summary>Lock object which should be set before dequeuing from queue countMetricEventQueue.</summary>
-        protected object countMetricEventQueueLock;
+        protected readonly object countMetricEventQueueLock;
         /// <summary>Lock object which should be set before dequeuing from queue amountMetricEventQueue.</summary>
-        protected object amountMetricEventQueueLock;
+        protected readonly object amountMetricEventQueueLock;
         /// <summary>Lock object which should be set before dequeuing from queue statusMetricEventQueue.</summary>
-        protected object statusMetricEventQueueLock;
+        protected readonly object statusMetricEventQueueLock;
         /// <summary>Lock object which should be set before dequeuing from queue intervalMetricEventQueue.</summary>
-        protected object intervalMetricEventQueueLock;
+        protected readonly object intervalMetricEventQueueLock;
 
         /// <summary>Object which implements a processing strategy for the buffers (queues).</summary>
-        protected IBufferProcessingStrategy bufferProcessingStrategy;
+        protected readonly IBufferProcessingStrategy bufferProcessingStrategy;
+        /// <summary>The base time unit to use to log interval metrics.</summary>
+        protected readonly IntervalMetricBaseTimeUnit intervalMetricBaseTimeUnit;
         /// <summary>The delegate to handle when a BufferProcessed event is raised.</summary>
-        protected EventHandler bufferProcessedEventHandler;
+        protected readonly EventHandler bufferProcessedEventHandler;
         /// <summary>Object which provides the current date and time.</summary>
-        protected IDateTime dateTime;
+        protected readonly IDateTime dateTime;
         /// <summary>Used to measure elapsed time since starting the buffer processor.</summary>
-        protected IStopwatch stopWatch;
+        protected readonly IStopwatch stopWatch;
         /// <summary>Object which provides Guids.</summary>
-        protected IGuidProvider guidProvider;
+        protected readonly IGuidProvider guidProvider;
         /// <summary>Whether to support interleaving when processing interval metrics.  Set to null when the mode has not yet been determined (i.e. before the <see cref="IMetricLogger.End(Guid, IntervalMetric)"/> or <see cref="IMetricLogger.CancelBegin(Guid, IntervalMetric)"/> methods have been called).</summary>
         protected Nullable<Boolean> interleavedIntervalMetricsMode;
         /// <summary>The timestamp at which the buffer processor was started.</summary>
@@ -78,8 +80,10 @@ namespace ApplicationMetrics.MetricLoggers
         /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.MetricLoggerBuffer class.
         /// </summary>
         /// <param name="bufferProcessingStrategy">Object which implements a processing strategy for the buffers (queues).</param>
+        /// <param name="intervalMetricBaseTimeUnit">The base time unit to use to log interval metrics.</param>
         /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).  Note that this parameter only has an effect when running in 'non-interleaved' mode.</param>
-        protected MetricLoggerBuffer(IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking)
+        /// <remarks>The class uses a <see cref="Stopwatch"/> to calculate and log interval metrics.  Since the smallest unit of time supported by Stopwatch is a tick (100 nanoseconds), the smallest level of granularity supported when constructor parameter 'intervalMetricBaseTimeUnit' is set to <see cref="IntervalMetricBaseTimeUnit.Nanosecond"/> is 100 nanoseconds.</remarks>
+        protected MetricLoggerBuffer(IBufferProcessingStrategy bufferProcessingStrategy, IntervalMetricBaseTimeUnit intervalMetricBaseTimeUnit, bool intervalMetricChecking)
         {
             countMetricEventQueue = new Queue<CountMetricEventInstance>();
             amountMetricEventQueue = new Queue<AmountMetricEventInstance>();
@@ -91,6 +95,7 @@ namespace ApplicationMetrics.MetricLoggers
             intervalMetricEventQueueLock = new object();
 
             this.bufferProcessingStrategy = bufferProcessingStrategy;
+            this.intervalMetricBaseTimeUnit = intervalMetricBaseTimeUnit;
             bufferProcessedEventHandler = delegate(object sender, EventArgs e) { DequeueAndProcessMetricEvents(); };
             this.bufferProcessingStrategy.BufferProcessed += bufferProcessedEventHandler;
             dateTime = new StandardAbstraction.DateTime();
@@ -107,12 +112,14 @@ namespace ApplicationMetrics.MetricLoggers
         /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.MetricLoggerBuffer class.  Note this is an additional constructor to facilitate unit tests, and should not be used to instantiate the class under normal conditions.
         /// </summary>
         /// <param name="bufferProcessingStrategy">Object which implements a processing strategy for the buffers (queues).</param>
+        /// <param name="intervalMetricBaseTimeUnit">The base time unit to use to log interval metrics.</param>
         /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).  Note that this parameter only has an effect when running in 'non-interleaved' mode.</param>
         /// <param name="dateTime">A test (mock) <see cref="IDateTime"/> object.</param>
         /// <param name="stopWatch">A test (mock) <see cref="IStopwatch"/> object.</param>
         /// <param name="guidProvider">A test (mock) <see cref="IGuidProvider"/> object.</param>
-        protected MetricLoggerBuffer(IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking, IDateTime dateTime, IStopwatch stopWatch, IGuidProvider guidProvider)
-            : this(bufferProcessingStrategy, intervalMetricChecking)
+        /// <remarks>This constructor is included to facilitate unit testing.</remarks>
+        protected MetricLoggerBuffer(IBufferProcessingStrategy bufferProcessingStrategy, IntervalMetricBaseTimeUnit intervalMetricBaseTimeUnit, bool intervalMetricChecking, IDateTime dateTime, IStopwatch stopWatch, IGuidProvider guidProvider)
+            : this(bufferProcessingStrategy, intervalMetricBaseTimeUnit, intervalMetricChecking)
         {
             this.dateTime = dateTime;
             this.stopWatch = stopWatch;
@@ -122,7 +129,6 @@ namespace ApplicationMetrics.MetricLoggers
         /// <summary>
         /// Starts the buffer processing (e.g. if the implementation of the buffer processing strategy uses a worker thread, this method starts the worker thread).
         /// </summary>
-        /// <remarks>This method is maintained on this class for backwards compatibility, as it is now available on interface IBufferProcessingStrategy.</remarks>
         public virtual void Start()
         {
             stopWatch.Reset();
@@ -140,14 +146,13 @@ namespace ApplicationMetrics.MetricLoggers
         /// <summary>
         /// Stops the buffer processing (e.g. if the implementation of the buffer processing strategy uses a worker thread, this method stops the worker thread).
         /// </summary>
-        /// <remarks>This method is maintained on this class for backwards compatibility, as it is now available on interface IBufferProcessingStrategy.</remarks>
         public virtual void Stop()
         {
             bufferProcessingStrategy.Stop();
             stopWatch.Stop();
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Increment(ApplicationMetrics.CountMetric)"]/*'/>
+        /// <inheritdoc/>
         public void Increment(CountMetric countMetric)
         {
             lock (countMetricEventQueueLock)
@@ -157,7 +162,7 @@ namespace ApplicationMetrics.MetricLoggers
             }
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Add(ApplicationMetrics.AmountMetric,System.Int64)"]/*'/>
+        /// <inheritdoc/>
         public void Add(AmountMetric amountMetric, long amount)
         {
             lock (amountMetricEventQueueLock)
@@ -167,7 +172,7 @@ namespace ApplicationMetrics.MetricLoggers
             }
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Set(ApplicationMetrics.StatusMetric,System.Int64)"]/*'/>
+        /// <inheritdoc/>
         public void Set(StatusMetric statusMetric, long value)
         {
             lock (statusMetricEventQueueLock)
@@ -177,7 +182,7 @@ namespace ApplicationMetrics.MetricLoggers
             }
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.Begin(ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <inheritdoc/>
         public Guid Begin(IntervalMetric intervalMetric)
         {
             lock (intervalMetricEventQueueLock)
@@ -189,7 +194,7 @@ namespace ApplicationMetrics.MetricLoggers
             }
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.End(ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <inheritdoc/>
         /// <exception cref="InvalidOperationException">This method overload cannot be called when the metric logger is running in interleaved mode.</exception>
         public void End(IntervalMetric intervalMetric)
         {
@@ -210,7 +215,7 @@ namespace ApplicationMetrics.MetricLoggers
             }
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.End(System.Guid,ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <inheritdoc/>
         /// <exception cref="InvalidOperationException">This method overload cannot be called when the metric logger is running in non-interleaved mode.</exception>
         public void End(Guid beginId, IntervalMetric intervalMetric)
         {
@@ -231,7 +236,7 @@ namespace ApplicationMetrics.MetricLoggers
             }
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.CancelBegin(ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <inheritdoc/>
         /// <exception cref="InvalidOperationException">This method overload cannot be called when the metric logger is running in interleaved mode.</exception>
         public void CancelBegin(IntervalMetric intervalMetric)
         {
@@ -251,7 +256,7 @@ namespace ApplicationMetrics.MetricLoggers
             }
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.CancelBegin(System.Guid,ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <inheritdoc/>
         /// <exception cref="InvalidOperationException">This method overload cannot be called when the metric logger is running in non-interleaved mode.</exception>
         public void CancelBegin(Guid beginId, IntervalMetric intervalMetric)
         {
@@ -468,16 +473,22 @@ namespace ApplicationMetrics.MetricLoggers
                 if (startIntervalMetricEventStore.ContainsKey(intervalMetricEventInstance.MetricType) == true)
                 {
                     TimeSpan intervalDuration = intervalMetricEventInstance.EventTime.Subtract(startIntervalMetricEventStore[intervalMetricEventInstance.MetricType].EventTime);
-                    double intervalDurationMillisecondsDouble = intervalDuration.TotalMilliseconds;
-                    // If the duration is less then 0 set back to 0, as the start time could be after the end time in the case the metric event occurred across a system time update
-                    if (intervalDurationMillisecondsDouble < 0)
+                    double intervalDurationTicks = intervalDuration.Ticks;
+                    if (intervalDurationTicks < 0)
                     {
-                        intervalDurationMillisecondsDouble = 0;
+                        intervalDurationTicks = 0;
                     }
-                    // Convert double to an Int64
-                    //   There should not be a risk of overflow here, as the number of milliseconds between DateTime.MinValue and DateTime.MaxValue is 315537897600000, which is a valid Int64 value
-                    Int64 intervalDurationMillisecondsInt64 = Convert.ToInt64(intervalDurationMillisecondsDouble);
-                    intervalMetricsAndDurations.Enqueue(new Tuple<IntervalMetricEventInstance, Int64>(startIntervalMetricEventStore[intervalMetricEventInstance.MetricType], intervalDurationMillisecondsInt64));
+                    Int64 intervalDurationBaseTimeUnit;
+                    if (intervalMetricBaseTimeUnit == IntervalMetricBaseTimeUnit.Millisecond)
+                    {
+                        intervalDurationBaseTimeUnit = Convert.ToInt64(intervalDurationTicks) / 10000;
+                    }
+                    else
+                    {
+                        // Below will only overflow if duration  is over 290 years, so should be safe
+                        intervalDurationBaseTimeUnit = Convert.ToInt64(intervalDurationTicks * 100);
+                    }
+                    intervalMetricsAndDurations.Enqueue(new Tuple<IntervalMetricEventInstance, Int64>(startIntervalMetricEventStore[intervalMetricEventInstance.MetricType], intervalDurationBaseTimeUnit));
                     startIntervalMetricEventStore.Remove(intervalMetricEventInstance.MetricType);
                 }
                 else
@@ -498,16 +509,22 @@ namespace ApplicationMetrics.MetricLoggers
                         throw new ArgumentException($"Metric started with BeginId '{intervalMetricEventInstance.BeginId}' was a '{startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId].Metric.Name}' metric, but {nameof(IMetricLogger.End)}() method was called with a '{intervalMetricEventInstance.Metric.Name}' metric.");
 
                     TimeSpan intervalDuration = intervalMetricEventInstance.EventTime.Subtract(startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId].EventTime);
-                    double intervalDurationMillisecondsDouble = intervalDuration.TotalMilliseconds;
-                    // If the duration is less then 0 set back to 0, as the start time could be after the end time in the case the metric event occurred across a system time update
-                    if (intervalDurationMillisecondsDouble < 0)
+                    double intervalDurationTicks = intervalDuration.Ticks;
+                    if (intervalDurationTicks < 0)
                     {
-                        intervalDurationMillisecondsDouble = 0;
+                        intervalDurationTicks = 0;
                     }
-                    // Convert double to an Int64
-                    //   There should not be a risk of overflow here, as the number of milliseconds between DateTime.MinValue and DateTime.MaxValue is 315537897600000, which is a valid Int64 value
-                    Int64 intervalDurationMillisecondsInt64 = Convert.ToInt64(intervalDurationMillisecondsDouble);
-                    intervalMetricsAndDurations.Enqueue(new Tuple<IntervalMetricEventInstance, Int64>(startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId], intervalDurationMillisecondsInt64));
+                    Int64 intervalDurationBaseTimeUnit;
+                    if (intervalMetricBaseTimeUnit == IntervalMetricBaseTimeUnit.Millisecond)
+                    {
+                        intervalDurationBaseTimeUnit = Convert.ToInt64(intervalDurationTicks) / 10000;
+                    }
+                    else
+                    {
+                        // Below will only overflow if duration  is over 290 years, so should be safe
+                        intervalDurationBaseTimeUnit = Convert.ToInt64(intervalDurationTicks * 100);
+                    }
+                    intervalMetricsAndDurations.Enqueue(new Tuple<IntervalMetricEventInstance, Int64>(startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId], intervalDurationBaseTimeUnit));
                     startIntervalMetricUniqueEventStore.Remove(intervalMetricEventInstance.BeginId);
                 }
                 else

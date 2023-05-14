@@ -389,7 +389,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 };
             }
 
-            /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyCountMetricEventBuffered"]/*'/>
+            /// <inheritdoc/>
             public override void NotifyCountMetricEventBuffered()
             {
                 lock (countMetricEventsBufferedLock)
@@ -398,7 +398,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 }
             }
 
-            /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyAmountMetricEventBuffered"]/*'/>
+            /// <inheritdoc/>
             public override void NotifyAmountMetricEventBuffered()
             {
                 lock (amountMetricEventsBufferedLock)
@@ -407,7 +407,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 }
             }
 
-            /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyStatusMetricEventBuffered"]/*'/>
+            /// <inheritdoc/>
             public override void NotifyStatusMetricEventBuffered()
             {
                 lock (statusMetricEventsBufferedLock)
@@ -416,7 +416,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 }
             }
 
-            /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyIntervalMetricEventBuffered"]/*'/>
+            /// <inheritdoc/>
             public override void NotifyIntervalMetricEventBuffered()
             {
                 lock (intervalMetricEventsBufferedLock)

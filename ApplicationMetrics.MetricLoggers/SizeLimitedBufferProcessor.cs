@@ -36,6 +36,21 @@ namespace ApplicationMetrics.MetricLoggers
         public SizeLimitedBufferProcessor(Int32 bufferSizeLimit)
             : base()
         {
+            if (bufferSizeLimit < 1)
+                throw new ArgumentOutOfRangeException(nameof(bufferSizeLimit), $"Parameter '{nameof(bufferSizeLimit)}' with value {bufferSizeLimit} cannot be less than 1.");
+
+            base.BufferProcessingAction = () =>
+            {
+                while (stopRequestReceived == false)
+                {
+                    bufferProcessSignal.WaitOne();
+                    if (stopRequestReceived == false)
+                    {
+                        OnBufferProcessed(EventArgs.Empty);
+                    }
+                    bufferProcessSignal.Reset();
+                }
+            };
             this.bufferSizeLimit = bufferSizeLimit;
             bufferProcessSignal = new AutoResetEvent(false);
         }
@@ -55,24 +70,7 @@ namespace ApplicationMetrics.MetricLoggers
             base.loopIterationCompleteSignal = loopIterationCompleteSignal;
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.Start"]/*'/>
-        public override void Start()
-        {
-            base.BufferProcessingAction = () =>
-            {
-                while (stopRequestReceived == false)
-                {
-                    bufferProcessSignal.WaitOne();
-                    if (stopRequestReceived == false)
-                    {
-                        OnBufferProcessed(EventArgs.Empty);
-                    }
-                }
-            };
-            base.Start();
-        }
-
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.Stop"]/*'/>
+        /// <inheritdoc/>
         public override void Stop()
         {
             // Check whether any exceptions have occurred on the worker thread and re-throw
@@ -86,28 +84,28 @@ namespace ApplicationMetrics.MetricLoggers
             CheckAndThrowProcessingException();
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyCountMetricEventBuffered"]/*'/>
+        /// <inheritdoc/>
         public override void NotifyCountMetricEventBuffered()
         {
             base.NotifyCountMetricEventBuffered();
             CheckBufferLimitReached();
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyAmountMetricEventBuffered"]/*'/>
+        /// <inheritdoc/>
         public override void NotifyAmountMetricEventBuffered()
         {
             base.NotifyAmountMetricEventBuffered();
             CheckBufferLimitReached();
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyStatusMetricEventBuffered"]/*'/>
+        /// <inheritdoc/>
         public override void NotifyStatusMetricEventBuffered()
         {
             base.NotifyStatusMetricEventBuffered();
             CheckBufferLimitReached();
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyIntervalMetricEventBuffered"]/*'/>
+        /// <inheritdoc/>
         public override void NotifyIntervalMetricEventBuffered()
         {
             base.NotifyIntervalMetricEventBuffered();

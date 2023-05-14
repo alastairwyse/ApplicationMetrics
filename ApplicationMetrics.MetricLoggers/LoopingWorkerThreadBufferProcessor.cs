@@ -62,7 +62,7 @@ namespace ApplicationMetrics.MetricLoggers
             this.loopIterationCount = loopIterationCount;
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.Start"]/*'/>
+        /// <inheritdoc/>
         public override void Start()
         {
             base.BufferProcessingAction = () =>

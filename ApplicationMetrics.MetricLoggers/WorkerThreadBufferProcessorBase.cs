@@ -54,7 +54,7 @@ namespace ApplicationMetrics.MetricLoggers
             get { return processingExceptionDispatchInfo; }
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="E:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.BufferProcessed"]/*'/>
+        /// <inheritdoc/>
         public event EventHandler BufferProcessed;
 
         /// <summary>
@@ -67,7 +67,8 @@ namespace ApplicationMetrics.MetricLoggers
             statusMetricEventsBuffered = 0;
             intervalMetricEventsBuffered = 0;
             processingExceptionDispatchInfo = null;
-            processRemainingBufferredMetricsOnStop = true;
+            processRemainingBufferredMetricsOnStop = true; 
+            stopRequestReceived = false;
             loopIterationCompleteSignal = null;
             disposed = false;
         }
@@ -82,7 +83,7 @@ namespace ApplicationMetrics.MetricLoggers
             this.loopIterationCompleteSignal = loopIterationCompleteSignal;
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.Start"]/*'/>
+        /// <inheritdoc/>
         public virtual void Start()
         {
             if (bufferProcessingWorkerThread == null)
@@ -94,7 +95,7 @@ namespace ApplicationMetrics.MetricLoggers
             bufferProcessingWorkerThread.Start();
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.Stop"]/*'/>
+        /// <inheritdoc/>
         public virtual void Stop()
         {
             // Check whether any exceptions have occurred on the worker thread and re-throw
@@ -106,60 +107,60 @@ namespace ApplicationMetrics.MetricLoggers
             CheckAndThrowProcessingException();
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.Stop(System.Boolean)"]/*'/>
+        /// <inheritdoc/>
         public virtual void Stop(bool processRemainingBufferedMetricEvents)
         {
             this.processRemainingBufferredMetricsOnStop = processRemainingBufferedMetricEvents;
             Stop();
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyCountMetricEventBuffered"]/*'/>
+        /// <inheritdoc/>
         public virtual void NotifyCountMetricEventBuffered()
         {
             CheckAndThrowProcessingException();
             Interlocked.Increment(ref countMetricEventsBuffered);
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyAmountMetricEventBuffered"]/*'/>
+        /// <inheritdoc/>
         public virtual void NotifyAmountMetricEventBuffered()
         {
             CheckAndThrowProcessingException();
             Interlocked.Increment(ref amountMetricEventsBuffered);
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyStatusMetricEventBuffered"]/*'/>
+        /// <inheritdoc/>
         public virtual void NotifyStatusMetricEventBuffered()
         {
             CheckAndThrowProcessingException();
             Interlocked.Increment(ref statusMetricEventsBuffered);
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyIntervalMetricEventBuffered"]/*'/>
+        /// <inheritdoc/>
         public virtual void NotifyIntervalMetricEventBuffered()
         {
             CheckAndThrowProcessingException();
             Interlocked.Increment(ref intervalMetricEventsBuffered);
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyCountMetricEventBufferCleared"]/*'/>
+        /// <inheritdoc/>
         public virtual void NotifyCountMetricEventBufferCleared()
         {
             Interlocked.Exchange(ref countMetricEventsBuffered, 0);
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyAmountMetricEventBufferCleared"]/*'/>
+        /// <inheritdoc/>
         public virtual void NotifyAmountMetricEventBufferCleared()
         {
             Interlocked.Exchange(ref amountMetricEventsBuffered, 0);
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyStatusMetricEventBufferCleared"]/*'/>
+        /// <inheritdoc/>
         public virtual void NotifyStatusMetricEventBufferCleared()
         {
             Interlocked.Exchange(ref statusMetricEventsBuffered, 0);
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyIntervalMetricEventBufferCleared"]/*'/>
+        /// <inheritdoc/>
         public virtual void NotifyIntervalMetricEventBufferCleared()
         {
             Interlocked.Exchange(ref intervalMetricEventsBuffered, 0);

@@ -18,31 +18,62 @@ using System;
 
 namespace ApplicationMetrics
 {
-    /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="T:ApplicationMetrics.IMetricLogger"]/*'/>
+    /// <summary>
+    /// Defines methods to record metric and instrumentation events for an application
+    /// </summary>
     public interface IMetricLogger
     {
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.Increment(ApplicationMetrics.CountMetric)"]/*'/>
+        /// <summary>
+        /// Records a single instance of the specified count event.
+        /// </summary>
+        /// <param name="countMetric">The count metric that occurred.</param>
         void Increment(CountMetric countMetric);
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.Add(ApplicationMetrics.AmountMetric,System.Int64)"]/*'/>
+        /// <summary>
+        /// Records an instance of the specified amount metric event, and the associated amount.
+        /// </summary>
+        /// <param name="amountMetric">The amount metric that occurred.</param>
+        /// <param name="amount">The amount associated with the instance of the amount metric.</param>
         void Add(AmountMetric amountMetric, long amount);
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.Set(ApplicationMetrics.StatusMetric,System.Int64)"]/*'/>
+        /// <summary>
+        /// Records an instance of the specified status metric event, and the associated value.
+        /// </summary>
+        /// <param name="statusMetric">The status metric that occurred.</param>
+        /// <param name="value">The value associated with the instance of the status metric.</param>
         void Set(StatusMetric statusMetric, long value);
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.Begin(ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <summary>
+        /// Records the starting of the specified interval metric event.
+        /// </summary>
+        /// <param name="intervalMetric">The interval metric that started.</param>
+        /// <returns>A unique id for the starting of the interval metric, which should be subsequently passed to the <see cref="IMetricLogger.End(Guid, IntervalMetric)"/> or <see cref="IMetricLogger.CancelBegin(Guid, IntervalMetric)"/> methods, when using the class in interleaved mode.</returns>
         Guid Begin(IntervalMetric intervalMetric);
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.End(ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <summary>
+        /// Records the completion of the specified interval metric event when using the class in non-interleaved mode.
+        /// </summary>
+        /// <param name="intervalMetric">The interval metric that completed.</param>
         void End(IntervalMetric intervalMetric);
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.End(System.Guid,ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <summary>
+        /// Records the completion of the specified interval metric event when using the class in interleaved mode.
+        /// </summary>
+        /// <param name="beginId">The id corresponding to the starting of the specified interval metric event (i.e. returned when the <see cref="IMetricLogger.Begin(IntervalMetric)"/> method was called).</param>
+        /// <param name="intervalMetric">The interval metric that completed.</param>
         void End(Guid beginId, IntervalMetric intervalMetric);
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.CancelBegin(ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <summary>
+        /// Cancels the starting of the specified interval metric event when using the class in non-interleaved mode (e.g. in the case that an exception occurs between the starting and completion of the event).
+        /// </summary>
+        /// <param name="intervalMetric">The interval metric that should be cancelled.</param>
         void CancelBegin(IntervalMetric intervalMetric);
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.CancelBegin(System.Guid,ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <summary>
+        /// Cancels the starting of the specified interval metric event when using the class in interleaved mode (e.g. in the case that an exception occurs between the starting and completion of the event).
+        /// </summary>
+        /// <param name="beginId">The id corresponding to the starting of the specified interval metric event (i.e. returned when the <see cref="IMetricLogger.Begin(IntervalMetric)"/> method was called).</param>
+        /// <param name="intervalMetric">The interval metric that should be cancelled.</param>
         void CancelBegin(Guid beginId, IntervalMetric intervalMetric);
     }
 }

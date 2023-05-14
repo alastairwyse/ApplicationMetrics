@@ -52,7 +52,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockGuidProvider = Substitute.For<IGuidProvider>();
             loopIterationCompleteSignal = new ManualResetEvent(false);
             bufferProcessor = new LoopingWorkerThreadBufferProcessor(10, loopIterationCompleteSignal, 2000);
-            testFileMetricLogger = new FileMetricLogger('|', bufferProcessor, true, mockStreamWriter, mockDateTime, mockStopWatch, mockGuidProvider);
+            testFileMetricLogger = new FileMetricLogger('|', bufferProcessor, IntervalMetricBaseTimeUnit.Millisecond, true, mockStreamWriter, mockDateTime, mockStopWatch, mockGuidProvider);
         }
 
         [TearDown]
@@ -338,6 +338,55 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
+        public void BeginEnd_NanosecondBaseTimeUnit()
+        {
+            testFileMetricLogger.Dispose();
+            testFileMetricLogger = new FileMetricLogger('|', bufferProcessor, IntervalMetricBaseTimeUnit.Nanosecond, true, mockStreamWriter, mockDateTime, mockStopWatch, mockGuidProvider);
+            mockStreamWriter.ClearReceivedCalls();
+            TimeSpan utcOffset = TimeZone.CurrentTimeZone.GetUtcOffset(System.DateTime.Now);
+            System.DateTime timeStamp1 = new System.DateTime(2014, 6, 14, 12, 45, 31, 000);
+            System.DateTime timeStamp2 = new System.DateTime(2014, 6, 14, 12, 45, 31, 034);
+            System.DateTime timeStamp3 = new System.DateTime(2014, 6, 14, 12, 45, 43, 500);
+            System.DateTime timeStamp4 = new System.DateTime(2014, 6, 14, 12, 45, 43, 499);
+            System.DateTime timeStamp5 = new System.DateTime(2014, 6, 15, 23, 58, 47, 750);
+            System.DateTime timeStamp6 = new System.DateTime(2014, 6, 15, 23, 58, 48, 785);
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                // Returns for calls to Start()
+                timeStamp1
+            );
+            mockStopWatch.ElapsedTicks.Returns<Int64>
+            (
+                // Returns for calls to Begin() / End()
+                0L,
+                340000L,
+                125000000L,
+                // Note below expect makes the end time before the begin time.  Class should insert the resulting milliseconds interval as 0.
+                124990000L,
+                1267967500000L,
+                1267977850000L
+            );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
+
+            testFileMetricLogger.Start();
+            testFileMetricLogger.Begin(new DiskReadTime());
+            testFileMetricLogger.End(new DiskReadTime());
+            testFileMetricLogger.Begin(new MessageProcessingTime());
+            testFileMetricLogger.End(new MessageProcessingTime());
+            testFileMetricLogger.Begin(new MessageProcessingTime());
+            testFileMetricLogger.End(new MessageProcessingTime());
+            testFileMetricLogger.Stop();
+            loopIterationCompleteSignal.WaitOne();
+
+            var throwAway1 = mockDateTime.Received(1).UtcNow;
+            var throwAway2 = mockStopWatch.Received(6).ElapsedTicks;
+            mockStreamWriter.Received(1).WriteLine(timeStamp1.Add(utcOffset).ToString(dateTimeFormat) + " | " + new DiskReadTime().Name + " | " + ConvertMillisecondsToNanoseconds(34));
+            mockStreamWriter.Received(1).WriteLine(timeStamp3.Add(utcOffset).ToString(dateTimeFormat) + " | " + new MessageProcessingTime().Name + " | " + ConvertMillisecondsToNanoseconds(0));
+            mockStreamWriter.Received(1).WriteLine(timeStamp5.Add(utcOffset).ToString(dateTimeFormat) + " | " + new MessageProcessingTime().Name + " | " + ConvertMillisecondsToNanoseconds(1035));
+            mockStreamWriter.Received(3).Flush();
+        }
+
+        [Test]
         public void BeginEnd_ExceptionOnWorkerThread()
         {
             TimeSpan utcOffset = TimeZone.CurrentTimeZone.GetUtcOffset(System.DateTime.Now);
@@ -390,6 +439,61 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
+        public void BeginEnd_NanosecondBaseTimeUnitExceptionOnWorkerThread()
+        {
+            testFileMetricLogger.Dispose();
+            testFileMetricLogger = new FileMetricLogger('|', bufferProcessor, IntervalMetricBaseTimeUnit.Nanosecond, true, mockStreamWriter, mockDateTime, mockStopWatch, mockGuidProvider);
+            mockStreamWriter.ClearReceivedCalls();
+            TimeSpan utcOffset = TimeZone.CurrentTimeZone.GetUtcOffset(System.DateTime.Now);
+            System.DateTime timeStamp1 = new System.DateTime(2014, 6, 14, 12, 45, 31, 000);
+            System.DateTime timeStamp2 = new System.DateTime(2014, 6, 14, 12, 45, 31, 034);
+            System.DateTime timeStamp3 = new System.DateTime(2014, 6, 14, 12, 45, 43, 500);
+            System.DateTime timeStamp4 = new System.DateTime(2014, 6, 14, 12, 45, 43, 499);
+            System.DateTime timeStamp5 = new System.DateTime(2014, 6, 15, 23, 58, 47, 750);
+            System.DateTime timeStamp6 = new System.DateTime(2014, 6, 15, 23, 58, 48, 785);
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                // Returns for calls to Start()
+                timeStamp1
+            );
+            mockStopWatch.ElapsedTicks.Returns<Int64>
+            (
+                // Returns for calls to Begin() / End()
+                0L,
+                340000L,
+                125000000L,
+                // Note below expect makes the end time before the begin time.  Class should insert the resulting milliseconds interval as 0.
+                124990000L,
+                1267967500000L,
+                1267977850000L
+            );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
+            mockStreamWriter.When(streamWriter => streamWriter.WriteLine(timeStamp3.Add(utcOffset).ToString(dateTimeFormat) + " | " + new MessageProcessingTime().Name + " | " + 0)).Throw(new Exception("Mock worker thread exception."));
+
+            testFileMetricLogger.Start();
+            testFileMetricLogger.Begin(new DiskReadTime());
+            testFileMetricLogger.End(new DiskReadTime());
+            testFileMetricLogger.Begin(new MessageProcessingTime());
+            testFileMetricLogger.End(new MessageProcessingTime());
+            testFileMetricLogger.Begin(new MessageProcessingTime());
+            // Sleep to try to ensure the worker thread has enough time to process the above buffered events
+            Thread.Sleep(100);
+
+            var e = Assert.Throws<Exception>(delegate
+            {
+                testFileMetricLogger.End(new MessageProcessingTime());
+            });
+
+            Assert.That(e.Message, Does.StartWith("Exception occurred on buffer processing worker thread at "));
+            Assert.That(e.InnerException.Message, Does.StartWith("Mock worker thread exception."));
+            var throwAway1 = mockDateTime.Received(1).UtcNow;
+            var throwAway2 = mockStopWatch.Received(6).ElapsedTicks;
+            mockStreamWriter.Received(1).WriteLine(timeStamp1.Add(utcOffset).ToString(dateTimeFormat) + " | " + new DiskReadTime().Name + " | " + ConvertMillisecondsToNanoseconds(34));
+            mockStreamWriter.Received(1).WriteLine(timeStamp3.Add(utcOffset).ToString(dateTimeFormat) + " | " + new MessageProcessingTime().Name + " | " + ConvertMillisecondsToNanoseconds(0));
+            mockStreamWriter.Received(1).Flush();
+        }
+
+        [Test]
         public void Close()
         {
             testFileMetricLogger.Close();
@@ -404,5 +508,19 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
 
             mockStreamWriter.Received(1).Dispose();
         }
+
+        #region Private/Protected Methods
+
+        /// <summary>
+        /// Converts the specified number of ticks to nanoseconds.
+        /// </summary>
+        /// <param name="milliseconds">The milliseconds to convert.</param>
+        /// <returns>The equivalent number of nanoseconds.</returns>
+        private Int64 ConvertMillisecondsToNanoseconds(Int32 milliseconds)
+        {
+            return (Int64)milliseconds * 1000000;
+        }
+
+        #endregion
     }
 }

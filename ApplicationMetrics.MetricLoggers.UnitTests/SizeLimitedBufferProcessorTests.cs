@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#pragma warning disable 1591
-
 using System;
 using System.Threading;
 using System.Collections.Generic;
@@ -42,7 +40,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         {
             loopIterationCompleteSignal = new ManualResetEvent(false);
             testSizeLimitedBufferProcessor = new SizeLimitedBufferProcessor(3, loopIterationCompleteSignal);
-            testCountingMetricLogger = new CountingMetricLogger(testSizeLimitedBufferProcessor, true);
+            testCountingMetricLogger = new CountingMetricLogger(testSizeLimitedBufferProcessor, IntervalMetricBaseTimeUnit.Millisecond, true);
             millisecondsToWaitBeforeStop = 250;
         }
 
@@ -52,6 +50,18 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             testCountingMetricLogger.Dispose();
             testSizeLimitedBufferProcessor.Dispose();
             loopIterationCompleteSignal.Dispose();
+        }
+
+        [Test]
+        public void Constructor_BufferSizeLimitParameterLessThan1()
+        {
+            var e = Assert.Throws<ArgumentOutOfRangeException>(delegate
+            {
+                testSizeLimitedBufferProcessor = new SizeLimitedBufferProcessor(0, loopIterationCompleteSignal);
+            });
+
+            Assert.That(e.Message, Does.StartWith("Parameter 'bufferSizeLimit' with value 0 cannot be less than 1."));
+            Assert.AreEqual(e.ParamName, "bufferSizeLimit");
         }
 
         [Test]
@@ -273,8 +283,8 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 get { return statusMetricsProcessed; }
             }
 
-            public CountingMetricLogger(IBufferProcessingStrategy bufferProcessingStrategy, bool intervalMetricChecking)
-                : base(bufferProcessingStrategy, intervalMetricChecking)
+            public CountingMetricLogger(IBufferProcessingStrategy bufferProcessingStrategy, IntervalMetricBaseTimeUnit intervalMetricBaseTimeUnit, bool intervalMetricChecking)
+                : base(bufferProcessingStrategy, intervalMetricBaseTimeUnit, intervalMetricChecking)
             {
                 amountMetricsProcessed = 0;
                 countMetricsProcessed = 0;

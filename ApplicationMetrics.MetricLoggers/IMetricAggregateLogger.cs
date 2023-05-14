@@ -14,27 +14,73 @@
  * limitations under the License.
  */
 
+using System.Drawing;
+using System.Xml.Linq;
+
 namespace ApplicationMetrics.MetricLoggers
 {
-    /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="T:ApplicationMetrics.MetricLoggers.IMetricAggregateLogger"]/*'/>
+    /// <summary>
+    /// Defines methods to register aggregates of metric events, allowing the values of these aggregates to be recorded and logged when the underlying metric events occur.
+    /// </summary>
     public interface IMetricAggregateLogger : IMetricLogger
     {
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricAggregateLogger.DefineMetricAggregate(ApplicationMetrics.CountMetric,ApplicationMetrics.TimeUnit,System.String,System.String)"]/*'/>
+        /// <summary>
+        /// Defines a metric aggregate which represents the number of occurrences of a count metric within the specified time unit.
+        /// </summary>
+        /// <remarks>This metric aggregate could be used to represent the number of messages sent to a remote system each minute, or the number of disk reads per second.</remarks>
+        /// <param name="countMetric">The count metric recorded as part of the aggregate.</param>
+        /// <param name="timeUnit">The unit of time in which the number of occurrences of the count metric is recorded.</param>
+        /// <param name="name">The name of the metric aggregate.</param>
+        /// <param name="description">A description of the metric aggregate, explaining what it measures and/or represents.</param>
         void DefineMetricAggregate(CountMetric countMetric, TimeUnit timeUnit, string name, string description);
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricAggregateLogger.DefineMetricAggregate(ApplicationMetrics.AmountMetric,ApplicationMetrics.CountMetric,System.String,System.String)"]/*'/>
+        /// <summary>
+        /// Defines a metric aggregate which represents the total amount of the specified amount metric per occurrence of the specified count metric.
+        /// </summary>
+        /// <remarks>This metric aggregate could be used to represent the number of bytes per message sent to a remote system, or the number of bytes read per disk read.</remarks>
+        /// <param name="amountMetric">The amount metric recorded as part of the aggregate (effectively the numerator).</param>
+        /// <param name="countMetric">The count metric per which the total amount of the amount metric(s) are aggregated (effectively the denominator).</param>
+        /// <param name="name">The name of the metric aggregate.</param>
+        /// <param name="description">A description of the metric aggregate, explaining what it measures and/or represents.</param>
         void DefineMetricAggregate(AmountMetric amountMetric, CountMetric countMetric, string name, string description);
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricAggregateLogger.DefineMetricAggregate(ApplicationMetrics.AmountMetric,ApplicationMetrics.TimeUnit,System.String,System.String)"]/*'/>
+        /// <summary>
+        /// Defines a metric aggregate which represents the number of occurrences of a count metric within the specified time unit.
+        /// </summary>
+        /// <remarks>This metric aggregate could be used to represent the number of messages sent to a remote system each minute, or the number of disk reads per second.</remarks>
+        /// <param name="amountMetric">The amount metric recorded as part of the aggregate (effectively the numerator).</param>
+        /// <param name="timeUnit">The unit of time in which the amount associated with the specified amount metric is recorded.</param>
+        /// <param name="name">The name of the metric aggregate.</param>
+        /// <param name="description">A description of the metric aggregate, explaining what it measures and/or represents.</param>
         void DefineMetricAggregate(AmountMetric amountMetric, TimeUnit timeUnit, string name, string description);
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricAggregateLogger.DefineMetricAggregate(ApplicationMetrics.AmountMetric,ApplicationMetrics.AmountMetric,System.String,System.String)"]/*'/>
+        /// <summary>
+        /// Defines a metric aggregate which represents the ratio of one amount metric to another.
+        /// </summary>
+        /// <remarks>This metric aggregate could be used to represent the size of a compressed file against the size of the same file uncompressed, effectively recording the overall compression ratio.</remarks>
+        /// <param name="numeratorAmountMetric">The amount metric which is the numerator in the ratio.</param>
+        /// <param name="denominatorAmountMetric">The amount metric which is the denominator in the ratio.</param>
+        /// <param name="name">The name of the metric aggregate.</param>
+        /// <param name="description">A description of the metric aggregate, explaining what it measures and/or represents.</param>
         void DefineMetricAggregate(AmountMetric numeratorAmountMetric, AmountMetric denominatorAmountMetric, string name, string description);
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricAggregateLogger.DefineMetricAggregate(ApplicationMetrics.IntervalMetric,ApplicationMetrics.CountMetric,System.String,System.String)"]/*'/>
+        /// <summary>
+        ///  Defines a metric aggregate which represents the total time of the specified interval metric per occurrence of the specified count metric.
+        /// </summary>
+        /// <remarks>This metric aggregate could be used to represent the average time to send a message to a remote system, or the average time to read perform a disk read.</remarks>
+        /// <param name="intervalMetric">The interval metric recorded as part of the aggregate (effectively the numerator).</param>
+        /// <param name="countMetric">The count metric per which the total time of the interval metric(s) are aggregated (effectively the denominator).</param>
+        /// <param name="name">The name of the metric aggregate.</param>
+        /// <param name="description">A description of the metric aggregate, explaining what it measures and/or represents.</param>
         void DefineMetricAggregate(IntervalMetric intervalMetric, CountMetric countMetric, string name, string description);
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricAggregateLogger.DefineMetricAggregate(ApplicationMetrics.IntervalMetric,System.String,System.String)"]/*'/>
+        /// <summary>
+        /// Defines a metric which represents the total time of all occurrences of the specified interval metric as a fraction of the total runtime of the logger.
+        /// </summary>
+        /// <remarks>This metric aggregate could be used to represent the percentage of total runtime spent sending messages to a remote system.</remarks>
+        /// <param name="intervalMetric">The interval metric recorded as part of the aggregate.</param>
+        /// <param name="name">The name of the metric aggregate.</param>
+        /// <param name="description">A description of the metric aggregate, explaining what it measures and/or represents.</param>
         void DefineMetricAggregate(IntervalMetric intervalMetric, string name, string description);
     }
 }

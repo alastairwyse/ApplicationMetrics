@@ -17,6 +17,7 @@
 #pragma warning disable 1591
 
 using System;
+using System.Linq;
 using System.Threading;
 using NUnit.Framework;
 using NSubstitute;
@@ -53,7 +54,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockGuidProvider = Substitute.For<IGuidProvider>();
             workerThreadLoopIterationCompleteSignal = new ManualResetEvent(false);
             bufferProcessor = new LoopingWorkerThreadBufferProcessor(10, workerThreadLoopIterationCompleteSignal, 1);
-            testConsoleMetricLogger = new ConsoleMetricLogger(bufferProcessor, true, mockConsole, mockDateTime, mockStopWatch, mockGuidProvider);
+            testConsoleMetricLogger = new ConsoleMetricLogger(bufferProcessor, IntervalMetricBaseTimeUnit.Millisecond, true, mockConsole, mockDateTime, mockStopWatch, mockGuidProvider);
         }
 
         [TearDown]
@@ -75,9 +76,9 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
                 // Returns for calls to Increment()
-                20000000L,
-                40000000L,
-                60000000L
+                ConvertMillisecondsToTicks(2000),
+                ConvertMillisecondsToTicks(4000),
+                ConvertMillisecondsToTicks(6000)
             );
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 12, 15, 20, 29));
@@ -107,9 +108,9 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
                 // Returns for calls to Add()
-                20000000L,
-                40000000L,
-                60000000L
+                ConvertMillisecondsToTicks(2000),
+                ConvertMillisecondsToTicks(4000),
+                ConvertMillisecondsToTicks(6000)
             );
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 12, 15, 20, 29));
@@ -139,9 +140,9 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
                 // Returns for calls to Set()
-                10000000L,
-                30000000L,
-                60000000L
+                ConvertMillisecondsToTicks(1000),
+                ConvertMillisecondsToTicks(3000),
+                ConvertMillisecondsToTicks(6000)
             );
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 14, 22, 55, 07));
@@ -171,12 +172,12 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
                 // Returns for calls to Begin() /  End()
-                10000000L,
-                32500000L,
-                69870000L,
-                71230000L,
-                81240000L,
-                91250000L
+                ConvertMillisecondsToTicks(1000),
+                ConvertMillisecondsToTicks(3250),
+                ConvertMillisecondsToTicks(6987),
+                ConvertMillisecondsToTicks(7123),
+                ConvertMillisecondsToTicks(8124),
+                ConvertMillisecondsToTicks(9125)
             );
             mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
             // Returns for writing title banner
@@ -200,6 +201,47 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
+        public void BeginEnd_NanosecondBaseTimeUnit()
+        {
+            testConsoleMetricLogger.Dispose();
+            testConsoleMetricLogger = new ConsoleMetricLogger(bufferProcessor, IntervalMetricBaseTimeUnit.Nanosecond, true, mockConsole, mockDateTime, mockStopWatch, mockGuidProvider);
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                // Returns for calls to Start()
+                new System.DateTime(2014, 07, 14, 22, 54, 00)
+            );
+            mockStopWatch.ElapsedTicks.Returns<Int64>
+            (
+                // Returns for calls to Begin() /  End()
+                ConvertMillisecondsToTicks(1000),
+                ConvertMillisecondsToTicks(3250),
+                ConvertMillisecondsToTicks(6987),
+                ConvertMillisecondsToTicks(7123),
+                ConvertMillisecondsToTicks(8124),
+                ConvertMillisecondsToTicks(9125)
+            );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
+            // Returns for writing title banner
+            mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 14, 22, 58, 05));
+
+            testConsoleMetricLogger.Begin(new MessageProcessingTime());
+            testConsoleMetricLogger.Begin(new DiskReadTime());
+            testConsoleMetricLogger.End(new DiskReadTime());
+            testConsoleMetricLogger.End(new MessageProcessingTime());
+            testConsoleMetricLogger.Begin(new MessageProcessingTime());
+            testConsoleMetricLogger.End(new MessageProcessingTime());
+            testConsoleMetricLogger.Start();
+            workerThreadLoopIterationCompleteSignal.WaitOne();
+
+            var throwAway1 = mockDateTime.Received(1).UtcNow;
+            var throwAway2 = mockStopWatch.Received(6).ElapsedTicks;
+            throwAway1 = mockDateTime.Received(1).Now;
+            SetWriteTitleExpectedReceives(new System.DateTime(2014, 07, 14, 22, 58, 05));
+            mockConsole.Received(1).WriteLine(new DiskReadTime().Name + separatorString + ConvertMillisecondsToNanoseconds(3737));
+            mockConsole.Received(1).WriteLine(new MessageProcessingTime().Name + separatorString + ConvertMillisecondsToNanoseconds(7124));
+        }
+
+        [Test]
         public void LogCountOverTimeUnitAggregate()
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
@@ -210,11 +252,11 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
                 // Returns for calls to Increment()
-                2500000L,
-                5000000L,
-                7500000L,
-                10000000L,
-                12500000L
+                ConvertMillisecondsToTicks(250),
+                ConvertMillisecondsToTicks(500),
+                ConvertMillisecondsToTicks(750),
+                ConvertMillisecondsToTicks(1000),
+                ConvertMillisecondsToTicks(1250)
             );
             mockStopWatch.ElapsedMilliseconds.Returns<Int64>
             (
@@ -281,14 +323,14 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
                 // Returns for calls to Add() / Increment()
-                10000000L,
-                20000000L,
-                30000000L,
-                40000000L,
-                50000000L,
-                60000000L,
-                70000000L,
-                80000000L
+                ConvertMillisecondsToTicks(1000),
+                ConvertMillisecondsToTicks(2000),
+                ConvertMillisecondsToTicks(3000),
+                ConvertMillisecondsToTicks(4000),
+                ConvertMillisecondsToTicks(5000),
+                ConvertMillisecondsToTicks(6000),
+                ConvertMillisecondsToTicks(7000),
+                ConvertMillisecondsToTicks(8000)
             );
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 12, 17, 56, 27, 000));
@@ -327,10 +369,10 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
                 // Returns for calls to Add()
-                10000000L,
-                20000000L,
-                30000000L,
-                40000000L
+                ConvertMillisecondsToTicks(1000),
+                ConvertMillisecondsToTicks(2000),
+                ConvertMillisecondsToTicks(3000),
+                ConvertMillisecondsToTicks(4000)
             );
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 12, 17, 56, 28, 500));
@@ -363,11 +405,11 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
                 // Returns for calls to Add()
-                2500000L,
-                5000000L,
-                7500000L,
-                10000000L,
-                12500000L
+                ConvertMillisecondsToTicks(250),
+                ConvertMillisecondsToTicks(500),
+                ConvertMillisecondsToTicks(750),
+                ConvertMillisecondsToTicks(1000),
+                ConvertMillisecondsToTicks(1250)
             );
             mockStopWatch.ElapsedMilliseconds.Returns<Int64>
             (
@@ -443,10 +485,10 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
                 // Returns for calls to Add()
-                2500000L,
-                5000000L,
-                7500000L,
-                10000000L
+                ConvertMillisecondsToTicks(250),
+                ConvertMillisecondsToTicks(500),
+                ConvertMillisecondsToTicks(750),
+                ConvertMillisecondsToTicks(1000)
             );
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 12, 15, 39, 10, 125));
@@ -479,8 +521,8 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
                 // Returns for calls to Add()
-                2500000L,
-                5000000L
+                ConvertMillisecondsToTicks(250),
+                ConvertMillisecondsToTicks(500)
             );
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 12, 15, 39, 10, 125));
@@ -509,8 +551,8 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
                 // Returns for calls to Add()
-                2500000L,
-                5000000L
+                ConvertMillisecondsToTicks(250),
+                ConvertMillisecondsToTicks(500)
             );
             // Returns for writing title banner
             mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 12, 15, 39, 10, 125));
@@ -541,12 +583,12 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
                 // Returns for calls to Begin() / End()
-                0L,
-                1200000L,
-                1200000L,
-                8500000L,
-                19750000L,
-                19800000L
+                ConvertMillisecondsToTicks(0),
+                ConvertMillisecondsToTicks(120),
+                ConvertMillisecondsToTicks(120),
+                ConvertMillisecondsToTicks(850),
+                ConvertMillisecondsToTicks(1975),
+                ConvertMillisecondsToTicks(1980)
             );
             mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
             // Returns for writing title banner
@@ -584,10 +626,10 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
                 // Returns for calls to Begin() / End()
-                0,
-                1200000L,
-                28500000L,
-                39750000L
+                ConvertMillisecondsToTicks(0),
+                ConvertMillisecondsToTicks(120),
+                ConvertMillisecondsToTicks(2850),
+                ConvertMillisecondsToTicks(3975)
             );
             mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
             // Returns for writing title banner
@@ -621,10 +663,10 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
                 // Returns for calls to Begin() / End()
-                10000000L,
-                17890000L,
-                20580000L,
-                60320000L
+                ConvertMillisecondsToTicks(1000),
+                ConvertMillisecondsToTicks(1789),
+                ConvertMillisecondsToTicks(2058),
+                ConvertMillisecondsToTicks(6032)
             );
             mockStopWatch.ElapsedMilliseconds.Returns<Int64>
             (
@@ -653,6 +695,47 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
+        public void LogIntervalOverTotalRunTimeAggregate_NanosecondBaseTimeUnit()
+        {
+            testConsoleMetricLogger.Dispose();
+            testConsoleMetricLogger = new ConsoleMetricLogger(bufferProcessor, IntervalMetricBaseTimeUnit.Nanosecond, true, mockConsole, mockDateTime, mockStopWatch, mockGuidProvider);
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                // Returns for calls to Start()
+                new System.DateTime(2014, 07, 19, 17, 33, 50, 000)
+            );
+            mockStopWatch.ElapsedTicks.Returns<Int64>
+            (
+                // Returns for calls to Begin() / End()
+                ConvertMillisecondsToTicks(1000),
+                ConvertMillisecondsToTicks(1789),
+                ConvertMillisecondsToTicks(2058),
+                ConvertMillisecondsToTicks(6032),
+                // Returns for calls to LogIntervalOverTotalRunTimeAggregates()
+                ConvertMillisecondsToTicks(6300)
+            );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
+            // Returns for writing title banner
+            mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 19, 17, 33, 51, 125));
+
+            testConsoleMetricLogger.DefineMetricAggregate(new MessageProcessingTime(), "MessageProcessingTimePercentage", "The amount of time spent processing messages as a percentage of total run time");
+            testConsoleMetricLogger.Begin(new MessageProcessingTime());
+            testConsoleMetricLogger.End(new MessageProcessingTime());
+            testConsoleMetricLogger.Begin(new MessageProcessingTime());
+            testConsoleMetricLogger.End(new MessageProcessingTime());
+            testConsoleMetricLogger.Start();
+            workerThreadLoopIterationCompleteSignal.WaitOne();
+
+            var throwAway1 = mockDateTime.Received(1).UtcNow;
+            var throwAway2 = mockStopWatch.Received(5).ElapsedTicks;
+            var throwAway3 = mockStopWatch.DidNotReceive().ElapsedMilliseconds;
+            throwAway1 = mockDateTime.Received(1).Now;
+            SetWriteTitleExpectedReceives(new System.DateTime(2014, 07, 19, 17, 33, 51, 125));
+            mockConsole.Received(1).WriteLine(new MessageProcessingTime().Name + separatorString + ConvertMillisecondsToNanoseconds(4763));
+            mockConsole.Received(1).WriteLine("MessageProcessingTimePercentage" + separatorString + "0.756031746031746");
+        }
+
+        [Test]
         public void LogIntervalOverTotalRunTimeAggregate_ZeroElapsedTime()
         {
             // Tests that an aggregate is not logged when no time has elapsed
@@ -665,15 +748,15 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockStopWatch.ElapsedTicks.Returns<Int64>
             (
                 // Returns for calls to Begin() / End()
-                10000000L,
-                17890000L,
-                20580000L,
-                60320000L
+                ConvertMillisecondsToTicks(1000),
+                ConvertMillisecondsToTicks(1789),
+                ConvertMillisecondsToTicks(2058),
+                ConvertMillisecondsToTicks(6032)
             );
             mockStopWatch.ElapsedMilliseconds.Returns<Int64>
             (
                 // Returns for calls to LogIntervalOverTotalRunTimeAggregates()
-                6300
+                0
             );
             mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
             // Returns for writing title banner
@@ -693,8 +776,55 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             throwAway1 = mockDateTime.Received(1).Now;
             SetWriteTitleExpectedReceives(new System.DateTime(2014, 07, 19, 17, 33, 51, 125));
             mockConsole.Received(1).WriteLine(new MessageProcessingTime().Name + separatorString + "4763");
-            mockConsole.Received(1).WriteLine("MessageProcessingTimePercentage" + separatorString + "0.756031746031746");
+            // Can't use DidNotRecieve() with partial matching parameter, hence check that only 5 total calls were received (4 for writing the title, plus the above metric)
+            Assert.AreEqual(5, mockConsole.ReceivedCalls().Count());
         }
+
+        [Test]
+        public void LogIntervalOverTotalRunTimeAggregate_NanosecondBaseTimeUnitZeroElapsedTime()
+        {
+            // Tests that an aggregate is not logged when no time has elapsed
+
+            testConsoleMetricLogger.Dispose();
+            testConsoleMetricLogger = new ConsoleMetricLogger(bufferProcessor, IntervalMetricBaseTimeUnit.Nanosecond, true, mockConsole, mockDateTime, mockStopWatch, mockGuidProvider);
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                // Returns for calls to Start()
+                new System.DateTime(2014, 07, 19, 17, 33, 50, 000)
+            );
+            mockStopWatch.ElapsedTicks.Returns<Int64>
+            (
+                // Returns for calls to Begin() / End()
+                ConvertMillisecondsToTicks(1000),
+                ConvertMillisecondsToTicks(1789),
+                ConvertMillisecondsToTicks(2058),
+                ConvertMillisecondsToTicks(6032),
+                // Returns for calls to LogIntervalOverTotalRunTimeAggregates()
+                ConvertMillisecondsToTicks(0)
+            );
+            mockGuidProvider.NewGuid().Returns(Guid.NewGuid());
+            // Returns for writing title banner
+            mockDateTime.Now.Returns<System.DateTime>(new System.DateTime(2014, 07, 19, 17, 33, 51, 125));
+
+            testConsoleMetricLogger.DefineMetricAggregate(new MessageProcessingTime(), "MessageProcessingTimePercentage", "The amount of time spent processing messages as a percentage of total run time");
+            testConsoleMetricLogger.Begin(new MessageProcessingTime());
+            testConsoleMetricLogger.End(new MessageProcessingTime());
+            testConsoleMetricLogger.Begin(new MessageProcessingTime());
+            testConsoleMetricLogger.End(new MessageProcessingTime());
+            testConsoleMetricLogger.Start();
+            workerThreadLoopIterationCompleteSignal.WaitOne();
+
+            var throwAway1 = mockDateTime.Received(1).UtcNow;
+            var throwAway2 = mockStopWatch.Received(5).ElapsedTicks;
+            var throwAway3 = mockStopWatch.DidNotReceive().ElapsedMilliseconds;
+            throwAway1 = mockDateTime.Received(1).Now;
+            SetWriteTitleExpectedReceives(new System.DateTime(2014, 07, 19, 17, 33, 51, 125));
+            mockConsole.Received(1).WriteLine(new MessageProcessingTime().Name + separatorString + ConvertMillisecondsToNanoseconds(4763));
+            // Can't use DidNotRecieve() with partial matching parameter, hence check that only 5 total calls were received (4 for writing the title, plus the above metric)
+            Assert.AreEqual(5, mockConsole.ReceivedCalls().Count());
+        }
+
+        #region Private/Protected Methods
 
         /// <summary>
         /// Sets expected mock method calls for clearing the console and writing the title banner.
@@ -706,5 +836,27 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockConsole.Received(2).WriteLine("---------------------------------------------------");
             mockConsole.Received(1).WriteLine($"-- Application metrics as of {startDateTime.ToString("yyyy-MM-dd HH:mm:ss")} --");
         }
+
+        /// <summary>
+        /// Converts the specified number of ticks to milliseconds.
+        /// </summary>
+        /// <param name="milliseconds">The milliseconds to convert.</param>
+        /// <returns>The equivalent number of ticks.</returns>
+        private Int64 ConvertMillisecondsToTicks(Int32 milliseconds)
+        {
+            return (Int64)milliseconds * 10000;
+        }
+
+        /// <summary>
+        /// Converts the specified number of ticks to nanoseconds.
+        /// </summary>
+        /// <param name="milliseconds">The milliseconds to convert.</param>
+        /// <returns>The equivalent number of nanoseconds.</returns>
+        private Int64 ConvertMillisecondsToNanoseconds(Int32 milliseconds)
+        {
+            return (Int64)milliseconds * 1000000;
+        }
+
+        #endregion
     }
 }

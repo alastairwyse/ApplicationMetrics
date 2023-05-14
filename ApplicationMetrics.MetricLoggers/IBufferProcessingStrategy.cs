@@ -18,43 +18,71 @@ using System;
 
 namespace ApplicationMetrics.MetricLoggers
 {
-    /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="T:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy"]/*'/>
+    /// <summary>
+    /// Defines methods which interact with a strategy to process buffered metric events in a MetricLoggerBuffer class.  MetricLoggerBuffer classes utilizing the strategy should call the releavant 'Notify' methods as necessary, and subscribe to event <see cref="IBufferProcessingStrategy.BufferProcessed"/> to be notified of when to process the contents of their buffers.
+    /// </summary>
     public interface IBufferProcessingStrategy
     {
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="E:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.BufferProcessed"]/*'/>
+        /// <summary>
+        /// Occurs when the metric events stored in the buffer are removed from the buffer and processed.
+        /// </summary>
         event EventHandler BufferProcessed;
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.Start"]/*'/>
+        /// <summary>
+        /// Starts the buffer processing (e.g. if the implementation of the strategy uses a worker thread, this method starts the worker thread).
+        /// </summary>
         void Start();
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.Stop"]/*'/>
+        /// <summary>
+        /// Processes any metric events remaining in the buffers, and stops the buffer processing (e.g. if the implementation of the strategy uses a worker thread, this method stops the worker thread).
+        /// </summary>
         void Stop();
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.Stop(System.Boolean)"]/*'/>
+        /// <summary>
+        /// Stops the buffer processing (e.g. if the implementation of the strategy uses a worker thread, this method stops the worker thread).
+        /// </summary>
+        /// <remarks>There may be cases where the client code does not want to process any remaining metric events, e.g. in the case that the method was called as part of an exception handling routine.  This overload of the Stop() method allows the client code to specify this behaviour.</remarks>
+        /// <param name="processRemainingBufferedMetricEvents">Whether any metric events remaining in the buffers should be processed.</param>
         void Stop(bool processRemainingBufferedMetricEvents);
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyCountMetricEventBuffered"]/*'/>
+        /// <summary>
+        /// Notifies the buffer processing strategy that a count metric event was added to the buffer.
+        /// </summary>
         void NotifyCountMetricEventBuffered();
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyAmountMetricEventBuffered"]/*'/>
+        /// <summary>
+        /// Notifies the buffer processing strategy that an amount metric event was added to the buffer.
+        /// </summary>
         void NotifyAmountMetricEventBuffered();
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyStatusMetricEventBuffered"]/*'/>
+        /// <summary>
+        /// Notifies the buffer processing strategy that a status metric event was added to the buffer.
+        /// </summary>
         void NotifyStatusMetricEventBuffered();
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyIntervalMetricEventBuffered"]/*'/>
+        /// <summary>
+        /// Notifies the buffer processing strategy that an interval metric event was added to the buffer.
+        /// </summary>
         void NotifyIntervalMetricEventBuffered();
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyCountMetricEventBufferCleared"]/*'/>
+        /// <summary>
+        /// Notifies the buffer processing strategy that the buffer holding count metric events was cleared.
+        /// </summary>
         void NotifyCountMetricEventBufferCleared();
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyAmountMetricEventBufferCleared"]/*'/>
+        /// <summary>
+        /// Notifies the buffer processing strategy that the buffer holding amount metric events was cleared.
+        /// </summary>
         void NotifyAmountMetricEventBufferCleared();
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyStatusMetricEventBufferCleared"]/*'/>
+        /// <summary>
+        /// Notifies the buffer processing strategy that the buffer holding status metric events was cleared.
+        /// </summary>
         void NotifyStatusMetricEventBufferCleared();
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IBufferProcessingStrategy.NotifyIntervalMetricEventBufferCleared"]/*'/>
+        /// <summary>
+        /// Notifies the buffer processing strategy that the buffer holding interval metric events was cleared.
+        /// </summary>
         void NotifyIntervalMetricEventBufferCleared();
     }
 }

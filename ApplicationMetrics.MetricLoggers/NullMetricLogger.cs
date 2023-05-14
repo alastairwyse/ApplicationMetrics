@@ -31,43 +31,43 @@ namespace ApplicationMetrics.MetricLoggers
         {
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Increment(ApplicationMetrics.CountMetric)"]/*'/>
+        /// <inheritdoc/>
         public void Increment(CountMetric countMetric)
         {
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Add(ApplicationMetrics.AmountMetric,System.Int64)"]/*'/>
+        /// <inheritdoc/>
         public void Add(AmountMetric amountMetric, long amount)
         {
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.MetricLoggers.IMetricLogger.Set(ApplicationMetrics.StatusMetric,System.Int64)"]/*'/>
+        /// <inheritdoc/>
         public void Set(StatusMetric statusMetric, long value)
         {
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.Begin(ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <inheritdoc/>
         public Guid Begin(IntervalMetric intervalMetric)
         {
             return Guid.NewGuid();
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.End(ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <inheritdoc/>
         public void End(IntervalMetric intervalMetric)
         {
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.End(System.Guid,ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <inheritdoc/>
         public void End(Guid beginId, IntervalMetric intervalMetric)
         {
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.CancelBegin(ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <inheritdoc/>
         public void CancelBegin(IntervalMetric intervalMetric)
         {
         }
 
-        /// <include file='InterfaceDocumentationComments.xml' path='doc/members/member[@name="M:ApplicationMetrics.IMetricLogger.CancelBegin(System.Guid,ApplicationMetrics.IntervalMetric)"]/*'/>
+        /// <inheritdoc/>
         public void CancelBegin(Guid beginId, IntervalMetric intervalMetric)
         {
         }
