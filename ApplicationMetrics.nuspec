@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>ApplicationMetrics</id>
-    <version>5.1.0</version>
+    <version>6.0.0</version>
     <authors>Alastair Wyse</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">Apache-2.0</license>
@@ -12,9 +12,11 @@
 
 ApplicationMetrics includes several implementations of metric logger classes which write metrics and instrumentation information to files, and the console.  It also contains base classes which allow users to easily create metric loggers for logging to persistent data stores.</description>
     <summary>ApplicationMetrics provides interfaces and classes to allow simple logging of metric and instrumentation events from a client application</summary>
-    <releaseNotes>Updated the WorkerThreadBufferProcessorBase class to use ExceptionDispatchInfo to rethrow exceptions from the worker thread to the main thread, to better preserve the state and context of when the exception occurred.</releaseNotes>
-    <copyright>Copyright © Alastair Wyse 2022</copyright>
-    <tags>metric metrics instrumentation client application counter statistics</tags>
+    <releaseNotes>Added constructor parameter 'intervalMetricBaseTimeUnit' metric logger constructors.  Allows interval metrics to be logged in either milliseconds (former default) or nanoseconds (new option), to more accurately log interval metrics for high performance client applications.
+Added SizeLimitedLoopingWorkerThreadHybridBufferProcessor class... an implementation of IBufferProcessingStrategy which processes the buffers when either the total number of buffered metric events reaches a pre-defined limit or a specified looping interval expires, whichever occurs first.
+Added 'Filters' project/namespace, and 3 filter implementations (MetricLoggerExclusionFilter, MetricLoggerInclusionFilter, MetricLoggerTypeFilter) which can be used in a decorator pattern in front of metric loggers.</releaseNotes>
+    <copyright>Copyright © Alastair Wyse 2023</copyright>
+    <tags>metric metrics instrumentation client application counter statistics filter</tags>
     <icon>images\ApplicationMetrics.png</icon>
     <repository type="git" url="https://github.com/alastairwyse/ApplicationMetrics/" />
     <dependencies>
@@ -28,6 +30,8 @@ ApplicationMetrics includes several implementations of metric logger classes whi
     <file src=".\ApplicationMetrics\bin\Release\netstandard2.0\ApplicationMetrics.xml" target="lib\netstandard2.0\ApplicationMetrics.xml" />
     <file src=".\ApplicationMetrics.MetricLoggers\bin\Release\netstandard2.0\ApplicationMetrics.MetricLoggers.dll" target="lib\netstandard2.0\ApplicationMetrics.MetricLoggers.dll" />
     <file src=".\ApplicationMetrics.MetricLoggers\bin\Release\netstandard2.0\ApplicationMetrics.MetricLoggers.xml" target="lib\netstandard2.0\ApplicationMetrics.MetricLoggers.xml" />
+    <file src=".\ApplicationMetrics.Filters\bin\Release\netstandard2.0\ApplicationMetrics.Filters.dll" target="lib\netstandard2.0\ApplicationMetrics.Filters.dll" />
+    <file src=".\ApplicationMetrics.Filters\bin\Release\netstandard2.0\ApplicationMetrics.Filters.xml" target="lib\netstandard2.0\ApplicationMetrics.Filters.xml" />
     <file src=".\Resources\ApplicationMetrics.png" target="images\" />
   </files>
 </package>
