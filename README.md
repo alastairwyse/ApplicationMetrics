@@ -106,7 +106,7 @@ public class MessageSender
 The MessageSender class could be instantiated using a FileMetricLogger with the below statements...
 
 ````C#
-FileMetricLogger metricLogger  = new FileMetricLogger('|', @"C:\Test\MessageSenderMetrics.log", new LoopingWorkerThreadBufferProcessor(1000), true);
+FileMetricLogger metricLogger  = new FileMetricLogger('|', @"C:\Test\MessageSenderMetrics.log", new LoopingWorkerThreadBufferProcessor(1000), IntervalMetricBaseTimeUnit.Millisecond, true);
 MessageSender testMessageSender = new MessageSender(metricLogger);
 ````
 
@@ -117,7 +117,7 @@ Classes that implement IMetricAggregateLogger (ConsoleMetricLogger and Performan
 static void Main(string[] args)
 {
     LoopingWorkerThreadBufferProcessor bufferProcessor = new LoopingWorkerThreadBufferProcessor(5000);
-    ConsoleMetricLogger metricLogger = new ConsoleMetricLogger(bufferProcessor, true);
+    ConsoleMetricLogger metricLogger = new ConsoleMetricLogger(bufferProcessor, IntervalMetricBaseTimeUnit.Millisecond, true);
 
     // Define a metric aggregate to record the average size of sent messages (total message size / number of messages sent)
     metricLogger.DefineMetricAggregate(new MessageSize(), new MessageSent(), "AverageMessageSize", "The average size of sent messages");
@@ -142,8 +142,34 @@ MessagesSentPerSecond: 2.41545893719806
 ```
 
 ##### 5) Filtering metrics
+Metric logger filters have been included since version 6.0.0 (in the ApplicationMetrics.Filters namespace).  These implement filtering by wrapping metric logger instances, and can be 'chained' together in sequence following a [decorator](https://en.wikipedia.org/wiki/Decorator_pattern)-type pattern.  See the below example...
 
-## TODO
+````C#
+    // Create a ConsoleMetricLogger
+    LoopingWorkerThreadBufferProcessor bufferProcessor = new LoopingWorkerThreadBufferProcessor(3000);
+    var consoleMetricLogger = new ConsoleMetricLogger(bufferProcessor, IntervalMetricBaseTimeUnit.Millisecond, true);
+    // Create an exclusion filter which excludes/removes 'MessageSent' count metrics
+    var exclusionFilter = new MetricLoggerExclusionFilter
+    (
+        consoleMetricLogger, 
+        new List<CountMetric>() { new MessageSent() }, 
+        new List<AmountMetric>(), 
+        new List<StatusMetric>(), 
+        new List<IntervalMetric>()
+    );
+    // Create a type filter which only logs count metrics
+    //   2 filters are now 'chained' before the console metric logger i.e. typeFilter > exclusionFilter > consoleMetricLogger
+    var typeFilter = new MetricLoggerTypeFilter(exclusionFilter, true, false, false, false);
+
+    consoleMetricLogger.Start();
+
+    // 'DiskReadOperation' count metrics will be logged
+    typeFilter.Increment(new DiskReadOperation());
+    // 'MessageSent' count metrics are excluded by the exclusion filter, hence the below is not logged
+    typeFilter.Increment(new MessageSent());
+    // Amount metrics are excluded by the type filter, so the below 'MessageSize' metric is also not logged
+    typeFilter.Add(new MessageSize(), 2048);
+````
 
 #### 'Interleaved' Interval Metrics
 Since version 5.0.0 the MetricLoggerBuffer class (and its subclasses) supports 'interleaving' of interval metrics... i.e. allowing multiple interval metrics of the same type to be in a begun/started state at the same time (as would occur if methods Begin() &gt; Begin() &gt; End() &gt; End() were called in sequence for the same interval metric).  This is especially important when the client application is logging metrics from multiple threads.  This is facilitated by the Begin() method returning a unique Guid, which should subsequently be passed to the matching End() or CancelBegin() method.  For backwards (i.e. prior to version 5.0.0) compatibility, the former versions of the End() and CancelBegin() methods which *don't* accept a Guid are still maintained, as is the 'intervalMetricChecking' constructor parameter (which worked around the issue of not supporting interleaving by not throwing exceptions if interleaved interval metrics logging calls were received).  Depending on whether the first call to the End() or CancelBegin() methods includes the Guid parameter or not, the interleaving mode is selected accordingly... i.e. either interleaved (newer, including the Guid as a parameter) or non-interleaved (older, omitting the Guid).  Once the mode is set, calling method overloads corresponding to the other mode will throw an exception, so client code must consistently call either the Guid or non-Guid overloads of these methods.  
