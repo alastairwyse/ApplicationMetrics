@@ -193,6 +193,12 @@ A detailed sample implementation...<br>
     <td><b>Changes</b></td>
   </tr>
   <tr>
+    <td valign="top">6.1.0</td>
+    <td>  
+      Fixed Int64 overflow bug when logging interval metrics in MetricLoggerBuffer due to unnecessary internal conversion to Double.
+    </td>
+  </tr>
+  <tr>
     <td valign="top">6.0.0</td>
     <td>  
       Added constructor parameter 'intervalMetricBaseTimeUnit' metric logger constructors.  Allows interval metrics to be logged in either milliseconds (former default) or nanoseconds (new option), to more accurately log interval metrics for high performance client applications.<br />

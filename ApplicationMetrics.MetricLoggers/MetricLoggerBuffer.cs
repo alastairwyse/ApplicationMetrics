@@ -109,7 +109,7 @@ namespace ApplicationMetrics.MetricLoggers
         }
 
         /// <summary>
-        /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.MetricLoggerBuffer class.  Note this is an additional constructor to facilitate unit tests, and should not be used to instantiate the class under normal conditions.
+        /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.MetricLoggerBuffer class.
         /// </summary>
         /// <param name="bufferProcessingStrategy">Object which implements a processing strategy for the buffers (queues).</param>
         /// <param name="intervalMetricBaseTimeUnit">The base time unit to use to log interval metrics.</param>
@@ -327,7 +327,15 @@ namespace ApplicationMetrics.MetricLoggers
         /// <returns></returns>
         protected System.DateTime GetStopWatchUtcNow()
         {
-            return startTime.AddTicks(stopWatch.ElapsedTicks);
+            Int64 elapsedTicks = stopWatch.ElapsedTicks;
+            if ((System.DateTime.MaxValue - startTime).Ticks < elapsedTicks)
+            {
+                return System.DateTime.MaxValue;
+            }
+            else
+            {
+                return startTime.AddTicks(elapsedTicks);
+            }
         }
 
         /// <summary>
@@ -473,7 +481,7 @@ namespace ApplicationMetrics.MetricLoggers
                 if (startIntervalMetricEventStore.ContainsKey(intervalMetricEventInstance.MetricType) == true)
                 {
                     TimeSpan intervalDuration = intervalMetricEventInstance.EventTime.Subtract(startIntervalMetricEventStore[intervalMetricEventInstance.MetricType].EventTime);
-                    double intervalDurationTicks = intervalDuration.Ticks;
+                    Int64 intervalDurationTicks = intervalDuration.Ticks;
                     if (intervalDurationTicks < 0)
                     {
                         intervalDurationTicks = 0;
@@ -481,12 +489,11 @@ namespace ApplicationMetrics.MetricLoggers
                     Int64 intervalDurationBaseTimeUnit;
                     if (intervalMetricBaseTimeUnit == IntervalMetricBaseTimeUnit.Millisecond)
                     {
-                        intervalDurationBaseTimeUnit = Convert.ToInt64(intervalDurationTicks) / 10000;
+                        intervalDurationBaseTimeUnit = intervalDurationTicks / 10000;
                     }
                     else
                     {
-                        // Below will only overflow if duration  is over 290 years, so should be safe
-                        intervalDurationBaseTimeUnit = Convert.ToInt64(intervalDurationTicks * 100);
+                        intervalDurationBaseTimeUnit = ConvertTicksToNanoSeconds(intervalDurationTicks);
                     }
                     intervalMetricsAndDurations.Enqueue(new Tuple<IntervalMetricEventInstance, Int64>(startIntervalMetricEventStore[intervalMetricEventInstance.MetricType], intervalDurationBaseTimeUnit));
                     startIntervalMetricEventStore.Remove(intervalMetricEventInstance.MetricType);
@@ -509,7 +516,7 @@ namespace ApplicationMetrics.MetricLoggers
                         throw new ArgumentException($"Metric started with BeginId '{intervalMetricEventInstance.BeginId}' was a '{startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId].Metric.Name}' metric, but {nameof(IMetricLogger.End)}() method was called with a '{intervalMetricEventInstance.Metric.Name}' metric.");
 
                     TimeSpan intervalDuration = intervalMetricEventInstance.EventTime.Subtract(startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId].EventTime);
-                    double intervalDurationTicks = intervalDuration.Ticks;
+                    Int64 intervalDurationTicks = intervalDuration.Ticks;
                     if (intervalDurationTicks < 0)
                     {
                         intervalDurationTicks = 0;
@@ -521,8 +528,7 @@ namespace ApplicationMetrics.MetricLoggers
                     }
                     else
                     {
-                        // Below will only overflow if duration  is over 290 years, so should be safe
-                        intervalDurationBaseTimeUnit = Convert.ToInt64(intervalDurationTicks * 100);
+                        intervalDurationBaseTimeUnit = ConvertTicksToNanoSeconds(intervalDurationTicks);
                     }
                     intervalMetricsAndDurations.Enqueue(new Tuple<IntervalMetricEventInstance, Int64>(startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId], intervalDurationBaseTimeUnit));
                     startIntervalMetricUniqueEventStore.Remove(intervalMetricEventInstance.BeginId);
@@ -569,6 +575,28 @@ namespace ApplicationMetrics.MetricLoggers
                 {
                     throw new InvalidOperationException($"Received cancel '{intervalMetricEventInstance.Metric.Name}' with {nameof(UniqueIntervalMetricEventInstance.BeginId)} '{intervalMetricEventInstance.BeginId}' with no corresponding start interval metric.");
                 }
+            }
+        }
+
+        /// <summary>
+        /// Converts the specified value in ticks to nanoseconds.
+        /// </summary>
+        /// <param name="ticksValue">The value in ticks.</param>
+        /// <returns>The value converted to nanoseconds.</returns>
+        private Int64 ConvertTicksToNanoSeconds(Int64 ticksValue)
+        {
+            if (ticksValue == 0)
+            {
+                return ticksValue;
+            }
+            if ((Int64.MaxValue / ticksValue) < 100)
+            {
+                // Prevent overflow
+                return Int64.MaxValue;
+            }
+            else
+            {
+                return ticksValue * 100;
             }
         }
 

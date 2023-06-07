@@ -42,7 +42,7 @@ namespace ApplicationMetrics.MetricLoggers
         }
 
         /// <summary>
-        /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.ConsoleMetricLogger class.  Note this is an additional constructor to facilitate unit tests, and should not be used to instantiate the class under normal conditions.
+        /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.ConsoleMetricLogger class.
         /// </summary>
         /// <param name="bufferProcessingStrategy">Object which implements a processing strategy for the buffers (queues).</param>
         /// <param name="intervalMetricBaseTimeUnit">The base time unit to use to log interval metrics.</param>

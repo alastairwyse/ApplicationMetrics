@@ -67,7 +67,7 @@ namespace ApplicationMetrics.MetricLoggers
         }
 
         /// <summary>
-        /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.FileMetricLoggerImplementation class.  Note this is an additional constructor to facilitate unit tests, and should not be used to instantiate the class under normal conditions.
+        /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.FileMetricLoggerImplementation class.
         /// </summary>
         /// <param name="separatorCharacter">The character to use to separate fields (e.g. date/time stamp, metric name) in the file.</param>
         /// <param name="bufferProcessingStrategy">Object which implements a processing strategy for the buffers (queues).</param>
