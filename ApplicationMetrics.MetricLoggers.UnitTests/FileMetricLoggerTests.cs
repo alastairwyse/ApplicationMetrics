@@ -49,6 +49,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockStreamWriter = Substitute.For<IStreamWriter>();
             mockDateTime = Substitute.For<IDateTime>();
             mockStopWatch = Substitute.For<IStopwatch>();
+            mockStopWatch.Frequency.Returns<Int64>(10000000);
             mockGuidProvider = Substitute.For<IGuidProvider>();
             loopIterationCompleteSignal = new ManualResetEvent(false);
             bufferProcessor = new LoopingWorkerThreadBufferProcessor(10, loopIterationCompleteSignal, 2000);

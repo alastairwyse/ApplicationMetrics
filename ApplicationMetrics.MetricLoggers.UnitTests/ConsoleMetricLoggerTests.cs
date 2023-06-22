@@ -51,6 +51,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockConsole = Substitute.For<IConsole>();
             mockDateTime = Substitute.For<IDateTime>();
             mockStopWatch = Substitute.For<IStopwatch>();
+            mockStopWatch.Frequency.Returns<Int64>(10000000);
             mockGuidProvider = Substitute.For<IGuidProvider>();
             workerThreadLoopIterationCompleteSignal = new ManualResetEvent(false);
             bufferProcessor = new LoopingWorkerThreadBufferProcessor(10, workerThreadLoopIterationCompleteSignal, 1);
@@ -94,7 +95,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             throwAway1 = mockDateTime.Received(1).Now;
             SetWriteTitleExpectedReceives(new System.DateTime(2014, 07, 12, 15, 20, 29));
             mockConsole.Received(1).WriteLine(new MessageReceived().Name + separatorString + "2");
-            mockConsole.Received(1).WriteLine(new  DiskReadOperation().Name + separatorString + "1");
+            mockConsole.Received(1).WriteLine(new DiskReadOperation().Name + separatorString + "1");
         }
 
         [Test]

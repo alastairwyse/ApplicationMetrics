@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Alastair Wyse (https://github.com/alastairwyse/ApplicationMetrics/)
+ * Copyright 2023 Alastair Wyse (https://github.com/alastairwyse/ApplicationMetrics/)
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,6 +66,8 @@ namespace ApplicationMetrics.MetricLoggers
         protected Nullable<Boolean> interleavedIntervalMetricsMode;
         /// <summary>The timestamp at which the buffer processor was started.</summary>
         protected System.DateTime startTime;
+        /// <summary>The value of the 'Frequency' property of the StopWatch object.</summary>
+        protected readonly Int64 stopWatchFrequency;
         /// <summary>Indicates whether the object has been disposed.</summary>
         protected bool disposed;
 
@@ -100,6 +102,7 @@ namespace ApplicationMetrics.MetricLoggers
             this.bufferProcessingStrategy.BufferProcessed += bufferProcessedEventHandler;
             dateTime = new StandardAbstraction.DateTime();
             stopWatch = new Stopwatch();
+            stopWatchFrequency = stopWatch.Frequency;
             guidProvider = new DefaultGuidProvider();
 
             interleavedIntervalMetricsMode = null;
@@ -123,6 +126,7 @@ namespace ApplicationMetrics.MetricLoggers
         {
             this.dateTime = dateTime;
             this.stopWatch = stopWatch;
+            stopWatchFrequency = stopWatch.Frequency;
             this.guidProvider = guidProvider;
         }
 
@@ -322,19 +326,42 @@ namespace ApplicationMetrics.MetricLoggers
         }
 
         /// <summary>
-        /// Returns 
+        /// Returns the current date and time as UTC from the 'stopWatch' property.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The current date and time as UTC.</returns>
         protected System.DateTime GetStopWatchUtcNow()
         {
-            Int64 elapsedTicks = stopWatch.ElapsedTicks;
-            if ((System.DateTime.MaxValue - startTime).Ticks < elapsedTicks)
+            Int64 elapsedDateTimeTicks;
+            if (stopWatchFrequency == 10000000)
             {
-                return System.DateTime.MaxValue;
+                // On every system I've tested the StopWatch.Frequency property on, it's returned 10,000,000
+                //   Guessing this is maybe an upper limit of the property (since there's arguably not much point in supporting a frequency greated than the DateTime.Ticks resolution which is also 10,000,000/sec)
+                //   In any case, assuming the value is 10,000,000 on many systems, adding this shortcut to avoid conversion to double and overflow handling
+                elapsedDateTimeTicks = stopWatch.ElapsedTicks;
             }
             else
             {
-                return startTime.AddTicks(elapsedTicks);
+                Double stopWatchTicksPerDateTimeTick = 10000000.0 / Convert.ToDouble(stopWatchFrequency);
+                Double elapsedDateTimeTicksDouble = stopWatchTicksPerDateTimeTick * Convert.ToDouble(stopWatch.ElapsedTicks);
+                try
+                {
+                    // Would like to not prevent overflow with a try/catch, but can't find any better way to do this
+                    //   Chance should be extremely low of ever hitting the catch block... time since starting the stopwatch would have to be > 29,000 years
+                    elapsedDateTimeTicks = Convert.ToInt64(elapsedDateTimeTicksDouble);
+                }
+                catch (OverflowException)
+                {
+                    elapsedDateTimeTicks = Int64.MaxValue;
+                }
+            }
+            
+            if ((System.DateTime.MaxValue - startTime).Ticks < elapsedDateTimeTicks)
+            {
+                return System.DateTime.MaxValue.ToUniversalTime();
+            }
+            else
+            {
+                return startTime.AddTicks(elapsedDateTimeTicks);
             }
         }
 

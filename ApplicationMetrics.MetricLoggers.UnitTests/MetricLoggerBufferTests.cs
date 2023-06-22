@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright 2022 Alastair Wyse (https://github.com/alastairwyse/ApplicationMetrics/)
+ * Copyright 2023 Alastair Wyse (https://github.com/alastairwyse/ApplicationMetrics/)
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,9 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using StandardAbstraction;
 using NUnit.Framework;
 using NSubstitute;
-using StandardAbstraction;
-
 
 namespace ApplicationMetrics.MetricLoggers.UnitTests
 {
@@ -43,6 +42,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockConsole = Substitute.For<IConsole>();
             mockDateTime = Substitute.For<IDateTime>();
             mockStopWatch = Substitute.For<IStopwatch>();
+            mockStopWatch.Frequency.Returns<Int64>(10000000);
             mockGuidProvider = Substitute.For<IGuidProvider>();
             testMetricLoggerBuffer = new CapturingMetricLoggerBuffer(mockBufferProcessingStrategy, IntervalMetricBaseTimeUnit.Millisecond, true, mockDateTime, mockStopWatch, mockGuidProvider);
         }
@@ -1441,6 +1441,59 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
+        public void Begin_StopwatchFrequencyLessThan10000000()
+        {
+            mockStopWatch.Frequency.Returns<Int64>(5000000);
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                GenerateUtcDateTime("2022-09-03 17:11:42.000")
+            );
+            mockStopWatch.ElapsedTicks.Returns<Int64>
+            (
+                // All these values are 1/2 what they would be with the 'normal' Stopwatch.Frequency value of 10,000,000
+                55000,
+                115000,
+                180000, 
+                200000,
+                275000,
+                355000
+            );
+            mockGuidProvider.NewGuid().Returns
+            (
+                Guid.Parse("92d8985d-6394-4d97-97bf-8aaf95c97214"),
+                Guid.Parse("a6e36fad-dac6-426c-b2b8-454f04497866"),
+                Guid.Parse("4c9219a1-ae82-42ca-8e2b-26991a0eabc4")
+            );
+            testMetricLoggerBuffer = new CapturingMetricLoggerBuffer(mockBufferProcessingStrategy, IntervalMetricBaseTimeUnit.Millisecond, true, mockDateTime, mockStopWatch, mockGuidProvider);
+
+            testMetricLoggerBuffer.Start();
+            Guid beginId1 = testMetricLoggerBuffer.Begin(new DiskReadTime());
+            testMetricLoggerBuffer.End(beginId1, new DiskReadTime());
+            Guid beginId2 = testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            testMetricLoggerBuffer.End(beginId2, new MessageProcessingTime());
+            Guid beginId3 = testMetricLoggerBuffer.Begin(new MessageProcessingTime());
+            testMetricLoggerBuffer.End(beginId3, new MessageProcessingTime());
+            testMetricLoggerBuffer.DequeueAndProcessMetricEvents();
+            testMetricLoggerBuffer.Stop();
+
+            mockBufferProcessingStrategy.Received(3).NotifyIntervalMetricEventBuffered();
+            mockBufferProcessingStrategy.Received(1).NotifyIntervalMetricEventBufferCleared();
+            Assert.AreEqual(3, testMetricLoggerBuffer.CapturedIntervalMetricEvents.Count);
+            Assert.IsInstanceOf(typeof(DiskReadTime), testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item1);
+            Assert.AreEqual(GenerateUtcDateTime("2022-09-03 17:11:42.011"), testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item2);
+            Assert.AreEqual(12, testMetricLoggerBuffer.CapturedIntervalMetricEvents[0].Item3);
+            Assert.IsInstanceOf(typeof(MessageProcessingTime), testMetricLoggerBuffer.CapturedIntervalMetricEvents[1].Item1);
+            Assert.AreEqual(GenerateUtcDateTime("2022-09-03 17:11:42.036"), testMetricLoggerBuffer.CapturedIntervalMetricEvents[1].Item2);
+            Assert.AreEqual(4, testMetricLoggerBuffer.CapturedIntervalMetricEvents[1].Item3);
+            Assert.IsInstanceOf(typeof(MessageProcessingTime), testMetricLoggerBuffer.CapturedIntervalMetricEvents[2].Item1);
+            Assert.AreEqual(GenerateUtcDateTime("2022-09-03 17:11:42.055"), testMetricLoggerBuffer.CapturedIntervalMetricEvents[2].Item2);
+            Assert.AreEqual(16, testMetricLoggerBuffer.CapturedIntervalMetricEvents[2].Item3);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedCountMetricEvents.Count);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedAmountMetricEvents.Count);
+            Assert.AreEqual(0, testMetricLoggerBuffer.CapturedStatusMetricEvents.Count);
+        }
+
+        [Test]
         public void CancelBegin_NonInterleavedMode()
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
@@ -1601,6 +1654,87 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             Assert.AreEqual(0, testMetricLoggerBuffer.CapturedStatusMetricEvents.Count);
         }
 
+        [Test]
+        public void GetStopWatchUtcNow_Frequency10000000()
+        {
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                GenerateUtcDateTime("2022-09-04 12:10:08.000")
+            );
+            mockStopWatch.ElapsedTicks.Returns<Int64>(ConvertMillisecondsToTicks(120));
+            using (var testMetricLoggerBuffer = new MetricLoggerBufferWithProtectedMethods(mockBufferProcessingStrategy, IntervalMetricBaseTimeUnit.Millisecond, true, mockDateTime, mockStopWatch, mockGuidProvider))
+            {
+                testMetricLoggerBuffer.Start();
+
+                System.DateTime result = testMetricLoggerBuffer.GetStopWatchUtcNow();
+
+                testMetricLoggerBuffer.Stop();
+                Assert.AreEqual(GenerateUtcDateTime("2022-09-04 12:10:08.120"), result);
+            }
+        }
+
+        [Test]
+        public void GetStopWatchUtcNow_FrequencyLessThan10000000()
+        {
+            mockStopWatch.Frequency.Returns<Int64>(2500000);
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                GenerateUtcDateTime("2022-09-04 12:10:08.000")
+            );
+            // Frequency is 1/4 of 'normal' value (i.e. 2,500,000 instead of 10,000,000), so returning 1/4 the 'normal' ticks, i.e. 300,000 should result in 1,200,000 'normal' ticks... i.e. 120ms
+            mockStopWatch.ElapsedTicks.Returns<Int64>(300000);
+            using (var testMetricLoggerBuffer = new MetricLoggerBufferWithProtectedMethods(mockBufferProcessingStrategy, IntervalMetricBaseTimeUnit.Millisecond, true, mockDateTime, mockStopWatch, mockGuidProvider))
+            {
+                testMetricLoggerBuffer.Start();
+
+                System.DateTime result = testMetricLoggerBuffer.GetStopWatchUtcNow();
+
+                testMetricLoggerBuffer.Stop();
+                Assert.AreEqual(GenerateUtcDateTime("2022-09-04 12:10:08.120"), result);
+            }
+        }
+
+        [Test]
+        public void GetStopWatchUtcNow_FrequencyGreaterThan10000000()
+        {
+            mockStopWatch.Frequency.Returns<Int64>(20000000);
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                GenerateUtcDateTime("2022-09-04 12:10:08.000")
+            );
+            // Frequency is 2x 'normal' value (i.e. 20,000,000 instead of 10,000,000), so returning 2x the 'normal' ticks, i.e. 2,400,000 should result in 1,200,000 'normal' ticks... i.e. 120ms
+            mockStopWatch.ElapsedTicks.Returns<Int64>(2400000);
+            using (var testMetricLoggerBuffer = new MetricLoggerBufferWithProtectedMethods(mockBufferProcessingStrategy, IntervalMetricBaseTimeUnit.Millisecond, true, mockDateTime, mockStopWatch, mockGuidProvider))
+            {
+                testMetricLoggerBuffer.Start();
+
+                System.DateTime result = testMetricLoggerBuffer.GetStopWatchUtcNow();
+
+                testMetricLoggerBuffer.Stop();
+                Assert.AreEqual(GenerateUtcDateTime("2022-09-04 12:10:08.120"), result);
+            }
+        }
+
+        [Test]
+        public void GetStopWatchUtcNow_FrequencyNot10000000AndOverflowsInt64()
+        {
+            mockStopWatch.Frequency.Returns<Int64>(5000000);
+            mockDateTime.UtcNow.Returns<System.DateTime>
+            (
+                GenerateUtcDateTime("2022-09-04 12:10:08.000")
+            );
+            mockStopWatch.ElapsedTicks.Returns<Int64>(Int64.MaxValue / 2);
+            using (var testMetricLoggerBuffer = new MetricLoggerBufferWithProtectedMethods(mockBufferProcessingStrategy, IntervalMetricBaseTimeUnit.Millisecond, true, mockDateTime, mockStopWatch, mockGuidProvider))
+            {
+                testMetricLoggerBuffer.Start();
+
+                System.DateTime result = testMetricLoggerBuffer.GetStopWatchUtcNow();
+
+                testMetricLoggerBuffer.Stop();
+                Assert.AreEqual(System.DateTime.MaxValue.ToUniversalTime(), result);
+            }
+        }
+
         #region Private/Protected Methods
 
         /// <summary>
@@ -1753,6 +1887,38 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 {
                     capturedIntervalMetricEvents.Add(new Tuple<IntervalMetric, System.DateTime, Int64>(currentInstance.Item1.Metric, currentInstance.Item1.EventTime, currentInstance.Item2));
                 }
+            }
+        }
+
+        /// <summary>
+        /// Version of the MetricLoggerBuffer class where private and protected methods are exposed as public so that they can be unit tested.
+        /// </summary>
+        private class MetricLoggerBufferWithProtectedMethods : MetricLoggerBuffer
+        {
+            public MetricLoggerBufferWithProtectedMethods(IBufferProcessingStrategy bufferProcessingStrategy, IntervalMetricBaseTimeUnit intervalMetricBaseTimeUnit, bool intervalMetricChecking, IDateTime dateTime, IStopwatch stopWatch, IGuidProvider guidProvider)
+                : base(bufferProcessingStrategy, intervalMetricBaseTimeUnit, intervalMetricChecking, dateTime, stopWatch, guidProvider)
+            {
+            }
+
+            protected override void ProcessCountMetricEvents(Queue<CountMetricEventInstance> countMetricEvents)
+            {
+            }
+
+            protected override void ProcessAmountMetricEvents(Queue<AmountMetricEventInstance> amountMetricEvents)
+            {
+            }
+
+            protected override void ProcessStatusMetricEvents(Queue<StatusMetricEventInstance> statusMetricEvents)
+            {
+            }
+
+            protected override void ProcessIntervalMetricEvents(Queue<Tuple<IntervalMetricEventInstance, long>> intervalMetricEventsAndDurations)
+            {
+            }
+
+            public new System.DateTime GetStopWatchUtcNow()
+            {
+                return base.GetStopWatchUtcNow();
             }
         }
 

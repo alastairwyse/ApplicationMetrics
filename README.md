@@ -193,6 +193,12 @@ A detailed sample implementation...<br>
     <td><b>Changes</b></td>
   </tr>
   <tr>
+    <td valign="top">6.2.0</td>
+    <td>  
+      Corrected interval metric calculation when Stopwatch.Frequency property != 10,000,000.
+    </td>
+  </tr>
+  <tr>
     <td valign="top">6.1.0</td>
     <td>  
       Fixed Int64 overflow bug when logging interval metrics in MetricLoggerBuffer due to unnecessary internal conversion to Double.
