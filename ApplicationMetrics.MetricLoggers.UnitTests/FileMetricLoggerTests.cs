@@ -38,6 +38,9 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         private IDateTime mockDateTime;
         private IStopwatch mockStopWatch;
         private IGuidProvider mockGuidProvider;
+        private Exception testBufferProcessingException;
+        private Int32 bufferProcessingExceptionActionCallCount;
+        private Action<Exception> testBufferProcessingExceptionAction;
         private ManualResetEvent loopIterationCompleteSignal;
         private LoopingWorkerThreadBufferProcessor bufferProcessor;
         private FileMetricLogger testFileMetricLogger;
@@ -51,8 +54,15 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockStopWatch = Substitute.For<IStopwatch>();
             mockStopWatch.Frequency.Returns<Int64>(10000000);
             mockGuidProvider = Substitute.For<IGuidProvider>();
+            testBufferProcessingException = null;
+            bufferProcessingExceptionActionCallCount = 0;
+            testBufferProcessingExceptionAction = (Exception bufferProcessingException) =>
+            {
+                testBufferProcessingException = bufferProcessingException;
+                bufferProcessingExceptionActionCallCount++;
+            };
             loopIterationCompleteSignal = new ManualResetEvent(false);
-            bufferProcessor = new LoopingWorkerThreadBufferProcessor(10, loopIterationCompleteSignal, 2000);
+            bufferProcessor = new LoopingWorkerThreadBufferProcessor(10, testBufferProcessingExceptionAction, true, loopIterationCompleteSignal, 2000);
             testFileMetricLogger = new FileMetricLogger('|', bufferProcessor, IntervalMetricBaseTimeUnit.Millisecond, true, mockStreamWriter, mockDateTime, mockStopWatch, mockGuidProvider);
         }
 

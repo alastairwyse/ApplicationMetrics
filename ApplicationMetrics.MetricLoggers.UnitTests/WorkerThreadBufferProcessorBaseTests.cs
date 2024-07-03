@@ -31,6 +31,9 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         // Decided to do this, as making things fully deterministic would involve adding more test-only thread synchronising mechanisms (in addition to the existing WorkerThreadBufferProcessorBase.loopIterationCompleteSignal property), which would mean more redundtant statements executing during normal runtime.
         // I think the current implementation strikes a balance between having fully deterministic tests, and not interfering too much with normal runtime operation.
 
+        private Exception testBufferProcessingException;
+        private Int32 bufferProcessingExceptionActionCallCount;
+        private Action<Exception> testBufferProcessingExceptionAction;
         private ManualResetEvent loopIterationCompleteSignal;
         private LoopingWorkerThreadBufferProcessor testLoopingWorkerThreadBufferProcessor;
         private ManualResetEvent waitWhenProcessingLimitReachedSignal;
@@ -39,10 +42,17 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         [SetUp]
         protected void SetUp()
         {
+            testBufferProcessingException = null;
+            bufferProcessingExceptionActionCallCount = 0;
+            testBufferProcessingExceptionAction = (Exception bufferProcessingException) =>
+            {
+                testBufferProcessingException = bufferProcessingException;
+                bufferProcessingExceptionActionCallCount++;
+            };
             loopIterationCompleteSignal = new ManualResetEvent(false);
-            testLoopingWorkerThreadBufferProcessor = new LoopingWorkerThreadBufferProcessor(100, loopIterationCompleteSignal, 5);
+            testLoopingWorkerThreadBufferProcessor = new LoopingWorkerThreadBufferProcessor(100, testBufferProcessingExceptionAction, true, loopIterationCompleteSignal, 5);
             waitWhenProcessingLimitReachedSignal = new ManualResetEvent(false);
-            testBufferProcessor = new TestBufferProcessor(50, 3, waitWhenProcessingLimitReachedSignal, loopIterationCompleteSignal);
+            testBufferProcessor = new TestBufferProcessor(testBufferProcessingExceptionAction, true, 50, 3, waitWhenProcessingLimitReachedSignal, loopIterationCompleteSignal);
         }
 
         [TearDown]
@@ -70,7 +80,8 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         [Test]
         public void NotifyCountMetricEventBuffered_ExceptionOccursOnWorkerThread()
         {
-            testLoopingWorkerThreadBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { throw new Exception("Mock worker thread exception."); };
+            var mockException = new Exception("Mock worker thread exception.");
+            testLoopingWorkerThreadBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { throw mockException; };
 
             testLoopingWorkerThreadBufferProcessor.Start();
             loopIterationCompleteSignal.WaitOne();
@@ -81,13 +92,16 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             });
 
             Assert.That(e.Message, Does.StartWith("Exception occurred on buffer processing worker thread at "));
-            Assert.That(e.InnerException.Message, Does.StartWith("Mock worker thread exception."));
+            Assert.That(e.InnerException.Message, Does.StartWith("Mock worker thread exception.")); 
+            Assert.AreSame(testBufferProcessingException.InnerException, mockException);
+            Assert.AreEqual(1, bufferProcessingExceptionActionCallCount);
         }
 
         [Test]
         public void NotifyAmountMetricEventBuffered_ExceptionOccursOnWorkerThread()
         {
-            testLoopingWorkerThreadBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { throw new Exception("Mock worker thread exception."); };
+            var mockException = new Exception("Mock worker thread exception.");
+            testLoopingWorkerThreadBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { throw mockException; };
 
             testLoopingWorkerThreadBufferProcessor.Start();
             loopIterationCompleteSignal.WaitOne();
@@ -99,12 +113,15 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
 
             Assert.That(e.Message, Does.StartWith("Exception occurred on buffer processing worker thread at "));
             Assert.That(e.InnerException.Message, Does.StartWith("Mock worker thread exception."));
+            Assert.AreSame(testBufferProcessingException.InnerException, mockException);
+            Assert.AreEqual(1, bufferProcessingExceptionActionCallCount);
         }
 
         [Test]
         public void NotifyStatusMetricEventBuffered_ExceptionOccursOnWorkerThread()
         {
-            testLoopingWorkerThreadBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { throw new Exception("Mock worker thread exception."); };
+            var mockException = new Exception("Mock worker thread exception.");
+            testLoopingWorkerThreadBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { throw mockException; };
 
             testLoopingWorkerThreadBufferProcessor.Start();
             loopIterationCompleteSignal.WaitOne();
@@ -116,12 +133,15 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
 
             Assert.That(e.Message, Does.StartWith("Exception occurred on buffer processing worker thread at "));
             Assert.That(e.InnerException.Message, Does.StartWith("Mock worker thread exception."));
+            Assert.AreSame(testBufferProcessingException.InnerException, mockException);
+            Assert.AreEqual(1, bufferProcessingExceptionActionCallCount);
         }
 
         [Test]
         public void NotifyIntervalMetricEventBuffered_ExceptionOccursOnWorkerThread()
         {
-            testLoopingWorkerThreadBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { throw new Exception("Mock worker thread exception."); };
+            var mockException = new Exception("Mock worker thread exception.");
+            testLoopingWorkerThreadBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { throw mockException; };
 
             testLoopingWorkerThreadBufferProcessor.Start();
             loopIterationCompleteSignal.WaitOne();
@@ -133,6 +153,8 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
 
             Assert.That(e.Message, Does.StartWith("Exception occurred on buffer processing worker thread at "));
             Assert.That(e.InnerException.Message, Does.StartWith("Mock worker thread exception."));
+            Assert.AreSame(testBufferProcessingException.InnerException, mockException);
+            Assert.AreEqual(1, bufferProcessingExceptionActionCallCount);
         }
 
         [Test]
@@ -252,6 +274,47 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             Assert.That(e.InnerException.Message, Does.StartWith("Mock worker thread exception."));
         }
 
+        [Test]
+        public void Stop_ExceptionOccursOnWorkerThreadProcessingRemainingEventsAndRethrowBufferProcessingExceptionSetFalse()
+        {
+            testBufferProcessor.Dispose();
+            loopIterationCompleteSignal = new ManualResetEvent(false);
+            testBufferProcessor = new TestBufferProcessor(testBufferProcessingExceptionAction, false, 50, 3, waitWhenProcessingLimitReachedSignal, loopIterationCompleteSignal);
+            testBufferProcessor.Start();
+            testBufferProcessor.NotifyCountMetricEventBuffered();
+            testBufferProcessor.NotifyAmountMetricEventBuffered();
+            testBufferProcessor.NotifyStatusMetricEventBuffered();
+            // Sleep to try to ensure the worker thread has enough time to process the above buffered events
+            Thread.Sleep(500);
+            testBufferProcessor.NotifyAmountMetricEventBuffered();
+            testBufferProcessor.NotifyStatusMetricEventBuffered();
+            testBufferProcessor.ThrowException = true;
+            waitWhenProcessingLimitReachedSignal.Set();
+
+            testBufferProcessor.Stop();
+
+            Assert.That(testBufferProcessingException.InnerException.Message, Does.StartWith("Mock worker thread exception."));
+            Assert.AreEqual(1, bufferProcessingExceptionActionCallCount);
+        }
+
+        [Test]
+        public void BufferProcessed_ExceptionOccursOnWorkerThreadAndRethrowBufferProcessingExceptionSetFalse()
+        {
+            testLoopingWorkerThreadBufferProcessor.Dispose();
+            loopIterationCompleteSignal = new ManualResetEvent(false);
+            testLoopingWorkerThreadBufferProcessor = new LoopingWorkerThreadBufferProcessor(100, testBufferProcessingExceptionAction, false, loopIterationCompleteSignal, 5);
+            var mockException = new Exception("Mock worker thread exception.");
+            testLoopingWorkerThreadBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { throw mockException; };
+
+            testLoopingWorkerThreadBufferProcessor.Start();
+            loopIterationCompleteSignal.WaitOne();
+
+            testLoopingWorkerThreadBufferProcessor.NotifyIntervalMetricEventBuffered();
+
+            Assert.AreSame(testBufferProcessingException.InnerException, mockException);
+            Assert.AreEqual(1, bufferProcessingExceptionActionCallCount);
+        }
+
         #region Nested Classes
 
         /// <summary>
@@ -316,12 +379,14 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             /// <summary>
             /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.UnitTests.WorkerThreadBufferProcessorBaseTests+TestBufferProcessor class.
             /// </summary>
+            /// <param name="bufferProcessingExceptionAction">An action to invoke if an error occurs during buffer processing.  Accepts a single parameter which is the <see cref="Exception"/> containing details of the error.</param>
+            /// <param name="rethrowBufferProcessingException">Whether exceptions encountered during buffer processing should be rethrown when the next metric is logged.</param>
             /// <param name="bufferProcessingLoopInterval">The time to wait (in milliseconds) between iterations of the worker thread.</param>
             /// <param name="eventsProcessedBeforeWaitingLimit">The number of events the worker thread should process before pausing and waiting to be signalled.</param>
             /// <param name="waitWhenProcessingLimitReachedSignal">The signal to wait on when the event processing limit is reached.</param>
             /// <param name="loopIterationCompleteSignal">The signal which is set after the buffer processing worker thread stops, to notify test code that processing is complete.</param>
-            public TestBufferProcessor (Int32 bufferProcessingLoopInterval, Int32 eventsProcessedBeforeWaitingLimit, ManualResetEvent waitWhenProcessingLimitReachedSignal, ManualResetEvent loopIterationCompleteSignal)
-                : base(loopIterationCompleteSignal)
+            public TestBufferProcessor (Action<Exception> bufferProcessingExceptionAction, bool rethrowBufferProcessingException, Int32 bufferProcessingLoopInterval, Int32 eventsProcessedBeforeWaitingLimit, ManualResetEvent waitWhenProcessingLimitReachedSignal, ManualResetEvent loopIterationCompleteSignal)
+                : base(bufferProcessingExceptionAction, rethrowBufferProcessingException, loopIterationCompleteSignal)
             {
                 this.bufferProcessingLoopInterval = bufferProcessingLoopInterval;
                 eventsProcessedBeforeWaitingCount = 0;

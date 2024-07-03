@@ -59,10 +59,25 @@ namespace ApplicationMetrics.MetricLoggers
         /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.SizeLimitedBufferProcessor class.
         /// </summary>
         /// <param name="bufferSizeLimit">The total size of the buffers which when reached, triggers processing of the buffer contents.</param>
+        /// <param name="bufferProcessingExceptionAction">An action to invoke if an error occurs during buffer processing.  Accepts a single parameter which is the <see cref="Exception"/> containing details of the error.</param>
+        /// <param name="rethrowBufferProcessingException">Whether exceptions encountered during buffer processing should be rethrown when the next metric is logged.</param>
+        public SizeLimitedBufferProcessor(Int32 bufferSizeLimit, Action<Exception> bufferProcessingExceptionAction, bool rethrowBufferProcessingException)
+            : this(bufferSizeLimit)
+        {
+            base.bufferProcessingExceptionAction = bufferProcessingExceptionAction;
+            base.rethrowBufferProcessingException = rethrowBufferProcessingException;
+        }
+
+        /// <summary>
+        /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.SizeLimitedBufferProcessor class.
+        /// </summary>
+        /// <param name="bufferSizeLimit">The total size of the buffers which when reached, triggers processing of the buffer contents.</param>
+        /// <param name="bufferProcessingExceptionAction">An action to invoke if an error occurs during buffer processing.  Accepts a single parameter which is the <see cref="Exception"/> containing details of the error.</param>
+        /// <param name="rethrowBufferProcessingException">Whether exceptions encountered during buffer processing should be rethrown when the next metric is logged.</param>
         /// <param name="loopIterationCompleteSignal">Signal that will be set when the worker thread processing is complete (for unit testing).</param>
         /// <remarks>This constructor is included to facilitate unit testing.</remarks>
-        public SizeLimitedBufferProcessor(Int32 bufferSizeLimit, ManualResetEvent loopIterationCompleteSignal)
-            : this(bufferSizeLimit)
+        public SizeLimitedBufferProcessor(Int32 bufferSizeLimit, Action<Exception> bufferProcessingExceptionAction, bool rethrowBufferProcessingException, ManualResetEvent loopIterationCompleteSignal)
+            : this(bufferSizeLimit, bufferProcessingExceptionAction, rethrowBufferProcessingException)
         {
             if (loopIterationCompleteSignal == null)
                 throw new ArgumentNullException(nameof(loopIterationCompleteSignal), $"Parameter '{nameof(loopIterationCompleteSignal)}' cannot be null.");

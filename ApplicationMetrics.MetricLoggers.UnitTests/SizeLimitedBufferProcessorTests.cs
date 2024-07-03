@@ -30,6 +30,9 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         // Decided to do this, as making things fully deterministic would involve adding more test-only thread synchronising mechanisms (in addition to the existing WorkerThreadBufferProcessorBase.loopIterationCompleteSignal property), which would mean more redundtant statements executing during normal runtime.
         // I think the current implementation strikes a balance between having fully deterministic tests, and not interfering too much with normal runtime operation.
 
+        private Exception testBufferProcessingException;
+        private Int32 bufferProcessingExceptionActionCallCount;
+        private Action<Exception> testBufferProcessingExceptionAction;
         private ManualResetEvent loopIterationCompleteSignal;
         private SizeLimitedBufferProcessor testSizeLimitedBufferProcessor;
         private CountingMetricLogger testCountingMetricLogger;
@@ -38,8 +41,15 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         [SetUp]
         protected void SetUp()
         {
+            testBufferProcessingException = null;
+            bufferProcessingExceptionActionCallCount = 0;
+            testBufferProcessingExceptionAction = (Exception bufferProcessingException) =>
+            {
+                testBufferProcessingException = bufferProcessingException;
+                bufferProcessingExceptionActionCallCount++;
+            };
             loopIterationCompleteSignal = new ManualResetEvent(false);
-            testSizeLimitedBufferProcessor = new SizeLimitedBufferProcessor(3, loopIterationCompleteSignal);
+            testSizeLimitedBufferProcessor = new SizeLimitedBufferProcessor(3, testBufferProcessingExceptionAction, true, loopIterationCompleteSignal);
             testCountingMetricLogger = new CountingMetricLogger(testSizeLimitedBufferProcessor, IntervalMetricBaseTimeUnit.Millisecond, true);
             millisecondsToWaitBeforeStop = 250;
         }
@@ -57,7 +67,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         {
             var e = Assert.Throws<ArgumentOutOfRangeException>(delegate
             {
-                testSizeLimitedBufferProcessor = new SizeLimitedBufferProcessor(0, loopIterationCompleteSignal);
+                testSizeLimitedBufferProcessor = new SizeLimitedBufferProcessor(0, testBufferProcessingExceptionAction, true, loopIterationCompleteSignal);
             });
 
             Assert.That(e.Message, Does.StartWith("Parameter 'bufferSizeLimit' with value 0 cannot be less than 1."));
@@ -141,8 +151,9 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         [Test]
         public void Stop_ExceptionOccursOnWorkerThread()
         {
-            testSizeLimitedBufferProcessor = new SizeLimitedBufferProcessor(3, loopIterationCompleteSignal);
-            testSizeLimitedBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { throw new Exception("Mock worker thread exception."); };
+            testSizeLimitedBufferProcessor = new SizeLimitedBufferProcessor(3, testBufferProcessingExceptionAction, true, loopIterationCompleteSignal);
+            var mockException = new Exception("Mock worker thread exception.");
+            testSizeLimitedBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { throw mockException; };
             testSizeLimitedBufferProcessor.Start();
             testSizeLimitedBufferProcessor.NotifyAmountMetricEventBuffered();
             testSizeLimitedBufferProcessor.NotifyCountMetricEventBuffered();
@@ -157,13 +168,16 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
 
             Assert.That(e.Message, Does.StartWith("Exception occurred on buffer processing worker thread at "));
             Assert.That(e.InnerException.Message, Does.StartWith("Mock worker thread exception."));
+            Assert.AreSame(testBufferProcessingException.InnerException, mockException);
+            Assert.AreEqual(1, bufferProcessingExceptionActionCallCount);
         }
 
         [Test]
         public void Stop_ExceptionOccursOnWorkerThreadProcessingRemainingEvents()
         {
-            testSizeLimitedBufferProcessor = new SizeLimitedBufferProcessor(3, loopIterationCompleteSignal);
-            testSizeLimitedBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { throw new Exception("Mock worker thread exception."); };
+            testSizeLimitedBufferProcessor = new SizeLimitedBufferProcessor(3, testBufferProcessingExceptionAction, true, loopIterationCompleteSignal);
+            var mockException = new Exception("Mock worker thread exception.");
+            testSizeLimitedBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { throw mockException; };
             testSizeLimitedBufferProcessor.Start();
             testSizeLimitedBufferProcessor.NotifyAmountMetricEventBuffered();
             testSizeLimitedBufferProcessor.NotifyCountMetricEventBuffered();
@@ -177,6 +191,45 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
 
             Assert.That(e.Message, Does.StartWith("Exception occurred on buffer processing worker thread at "));
             Assert.That(e.InnerException.Message, Does.StartWith("Mock worker thread exception."));
+            Assert.AreSame(testBufferProcessingException.InnerException, mockException);
+            Assert.AreEqual(1, bufferProcessingExceptionActionCallCount);
+        }
+
+        [Test]
+        public void Stop_ExceptionOccursOnWorkerThreadProcessingRemainingEventsAndRethrowBufferProcessingExceptionSetFalse()
+        {
+            testSizeLimitedBufferProcessor.Dispose();
+            loopIterationCompleteSignal = new ManualResetEvent(false);
+            testSizeLimitedBufferProcessor = new SizeLimitedBufferProcessor(3, testBufferProcessingExceptionAction, false, loopIterationCompleteSignal);
+            var mockException = new Exception("Mock worker thread exception.");
+            testSizeLimitedBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { throw mockException; };
+            testSizeLimitedBufferProcessor.Start();
+            testSizeLimitedBufferProcessor.NotifyAmountMetricEventBuffered();
+            testSizeLimitedBufferProcessor.NotifyCountMetricEventBuffered();
+
+            testSizeLimitedBufferProcessor.Stop();
+
+            Assert.AreSame(testBufferProcessingException.InnerException, mockException);
+            Assert.AreEqual(1, bufferProcessingExceptionActionCallCount);
+        }
+
+        [Test]
+        public void BufferProcessed_ExceptionOccursOnWorkerThreadAndRethrowBufferProcessingExceptionSetFalse()
+        {
+            testSizeLimitedBufferProcessor.Dispose();
+            loopIterationCompleteSignal = new ManualResetEvent(false);
+            testSizeLimitedBufferProcessor = new SizeLimitedBufferProcessor(3, testBufferProcessingExceptionAction, false, loopIterationCompleteSignal);
+            var mockException = new Exception("Mock worker thread exception.");
+            testSizeLimitedBufferProcessor.BufferProcessed += (object sender, EventArgs e) => { throw mockException; };
+            testSizeLimitedBufferProcessor.Start();
+            testSizeLimitedBufferProcessor.NotifyAmountMetricEventBuffered();
+            testSizeLimitedBufferProcessor.NotifyCountMetricEventBuffered();
+            testSizeLimitedBufferProcessor.NotifyIntervalMetricEventBuffered();
+
+            loopIterationCompleteSignal.WaitOne();
+
+            Assert.AreSame(testBufferProcessingException.InnerException, mockException);
+            Assert.AreEqual(1, bufferProcessingExceptionActionCallCount);
         }
 
         [Test]

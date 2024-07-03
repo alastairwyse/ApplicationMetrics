@@ -8,7 +8,7 @@ ApplicationMetrics provides simple interfaces and classes to allow capturing met
 4. To provide additional implementation of metric loggers and viewers for files, console, and relational databases, plus base classes to allow consumers to easily provide their own implementations of metric loggers and viewers†.
 
 \* Note that the PerformanceCounterMetricLogger class which was used to view metrics through the Windows Performance Monitor, has been moved to a [separate project](https://github.com/alastairwyse/ApplicationMetrics.MetricLoggers.WindowsPerformanceCounter) since this project was migrated to .NET Standard.  
-† The [MetricLoggers.SqlServer](https://github.com/alastairwyse/ApplicationMetrics.MetricLoggers.SqlServer) project serves as an example of implementing a metric logger that writes to a relational database
+† The [MetricLoggers.SqlServer](https://github.com/alastairwyse/ApplicationMetrics.MetricLoggers.SqlServer) amd [MetricLoggers.PostgreSql](https://github.com/alastairwyse/ApplicationMetrics.MetricLoggers.PostgreSql) projects serve as examples of implementing metric loggers which write to relational databases
 
 #### Getting Started
 
@@ -110,7 +110,29 @@ FileMetricLogger metricLogger  = new FileMetricLogger('|', @"C:\Test\MessageSend
 MessageSender testMessageSender = new MessageSender(metricLogger);
 ````
 
-##### 3) Using the IMetricAggregateLogger interface
+##### 3) Choosing a Buffer Processing Strategy
+Metric logger classes implement IMetricLogger and generally derive from class MetricLoggerBuffer.  MetricLoggerBuffer buffers any logged metrics internally and persists the metrics periodically.  Classes implementing IBufferProcessingStrategy are passed to the MetricLoggerBuffer constructor, and determine when the buffers should be processed and the metric persisted.  3 implementations of IBufferProcessingStrategy are included...
+
+<table>
+  <tr>
+    <td><b>Class</b></td>
+    <td><b>Description</b></td>
+  </tr>
+  <tr>
+    <td valign="top">LoopingWorkerThreadBufferProcessor</td>
+    <td>Processes the buffers at a specified interval in a loop</td>
+  </tr>
+  <tr>
+    <td valign="top">SizeLimitedBufferProcessor</td>
+    <td>Processes the buffers when the total number of buffered metrics reaches a specified count.</td>
+  </tr>
+  <tr>
+    <td valign="top">SizeLimitedLoopingWorkerThreadHybridBufferProcessor</td>
+    <td>Processes the buffers when either a specified loop interval elapses, or when the total number of buffered metrics reaches a specified count, whichever occurs first.</td>
+  </tr>
+</table>
+
+##### 4) Using the IMetricAggregateLogger interface
 Classes that implement IMetricAggregateLogger (ConsoleMetricLogger and PerformanceCounterMetricLogger) let you define and log aggregates of individual metrics.  The example client code below shows how to define some aggregates for the above metrics...
 
 ````C#
@@ -127,7 +149,7 @@ static void Main(string[] args)
 }
 ````
 
-##### 4) Viewing the metrics
+##### 5) Viewing the metrics
 When started, the ConsoleMetricLogger will produce output similar to the following...
 
 ```
@@ -141,7 +163,7 @@ AverageMessageSize: 5910.676328502415
 MessagesSentPerSecond: 2.41545893719806
 ```
 
-##### 5) Filtering metrics
+##### 6) Filtering metrics
 Metric logger filters have been included since version 6.0.0 (in the ApplicationMetrics.Filters namespace).  These implement filtering by wrapping metric logger instances, and can be 'chained' together in sequence following a [decorator](https://en.wikipedia.org/wiki/Decorator_pattern)-type pattern.  See the below example...
 
 ````C#
@@ -176,6 +198,27 @@ Since version 5.0.0 the MetricLoggerBuffer class (and its subclasses) supports '
 
 Non-interleaved mode may be deprecated in future versions, so it is recommended to migrate client code to support interleaved mode.
 
+#### Exception Handling
+Classes implementing IBufferProcessingStrategy typically perform the processing/persisting of buffered metrics using a dedicated worker thread.  Since this processing often involves writing to remote persistant storage, there is a risk of unexpected transient errors.  Implementations of IBufferProcessingStrategy expose several optional constructor parameters to control the behaviour when encountering such errors/exceptions...
+
+<table>
+  <tr>
+    <td><b>Parameter</b></td>
+    <td><b>Description</b></td>
+  </tr>
+  <tr>
+    <td valign="top">bufferProcessingExceptionAction</td>
+    <td>An Action which is invoked when an error/exception is encountered, and which accepts the exception as a parameter.  Can be used (for example) to log or notify another system of the error, or to adjust the client application to handle or work around the error.</td>
+  </tr>
+  <tr>
+    <td valign="top">rethrowBufferProcessingException</td>
+    <td>
+      If set true, any error/exception encountered will be rethrown on the client application thread on the next call to the IMetricLogger Increment(), Add(), Set(), Begin(), End(), or CancelBegin() methods.  If set false an error/exception will not be rethrown.  Defaults to true if not specified.  Regardless of the setting, the Action set on parameter 'bufferProcessingExceptionAction' will be invoked with the encountered exception.<br /><br />  
+      Note that when an unexpected exception is encountered, the buffer processing worker thread will be terminated, if 'rethrowBufferProcessingException' is set false and metrics continue to be logged, the buffers will eventually fill up and result in out of memory exceptions.  If 'rethrowBufferProcessingException' is set false, the client application should stop logging further metrics when a buffer processing exception occurs.
+    </td>
+  </tr>
+</table>
+
 #### Links
 The documentation below was written for version 1.* of ApplicationMetrics.  Minor implementation details may have changed in versions 2.0.0 and above, however the basic principles and use cases documented are still valid.  Note also that this documentation demonstrates the older 'non-interleaved' method of logging interval metrics.
 
@@ -191,6 +234,12 @@ A detailed sample implementation...<br>
   <tr>
     <td><b>Version</b></td>
     <td><b>Changes</b></td>
+  </tr>
+  <tr>
+    <td valign="top">6.3.0</td>
+    <td>  
+      Added parameters to buffer processing classes to invoke a specified lambda on buffer processing failure, and to determine whether the exception causing the failure should be rethrown on the main metric logger classes' thread.
+    </td>
   </tr>
   <tr>
     <td valign="top">6.2.0</td>

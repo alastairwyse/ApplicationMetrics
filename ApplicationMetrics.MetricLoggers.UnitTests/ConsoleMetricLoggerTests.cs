@@ -40,6 +40,9 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         private IDateTime mockDateTime;
         private IStopwatch mockStopWatch;
         private IGuidProvider mockGuidProvider;
+        private Exception testBufferProcessingException;
+        private Int32 bufferProcessingExceptionActionCallCount;
+        private Action<Exception> testBufferProcessingExceptionAction;
         private ManualResetEvent workerThreadLoopIterationCompleteSignal;
         private LoopingWorkerThreadBufferProcessor bufferProcessor;
         private ConsoleMetricLogger testConsoleMetricLogger;
@@ -53,8 +56,15 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             mockStopWatch = Substitute.For<IStopwatch>();
             mockStopWatch.Frequency.Returns<Int64>(10000000);
             mockGuidProvider = Substitute.For<IGuidProvider>();
+            testBufferProcessingException = null;
+            bufferProcessingExceptionActionCallCount = 0;
+            testBufferProcessingExceptionAction = (Exception bufferProcessingException) =>
+            {
+                testBufferProcessingException = bufferProcessingException;
+                bufferProcessingExceptionActionCallCount++;
+            };
             workerThreadLoopIterationCompleteSignal = new ManualResetEvent(false);
-            bufferProcessor = new LoopingWorkerThreadBufferProcessor(10, workerThreadLoopIterationCompleteSignal, 1);
+            bufferProcessor = new LoopingWorkerThreadBufferProcessor(10, testBufferProcessingExceptionAction, true, workerThreadLoopIterationCompleteSignal, 1);
             testConsoleMetricLogger = new ConsoleMetricLogger(bufferProcessor, IntervalMetricBaseTimeUnit.Millisecond, true, mockConsole, mockDateTime, mockStopWatch, mockGuidProvider);
         }
 

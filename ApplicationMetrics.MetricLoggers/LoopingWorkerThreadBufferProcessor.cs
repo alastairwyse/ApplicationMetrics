@@ -47,11 +47,29 @@ namespace ApplicationMetrics.MetricLoggers
         /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.LoopingWorkerThreadBufferProcessor class.
         /// </summary>
         /// <param name="dequeueOperationLoopInterval">The time to wait (in milliseconds) between iterations of the worker thread which dequeues and processes metric events.</param>
+        /// <param name="bufferProcessingExceptionAction">An action to invoke if an error occurs during buffer processing.  Accepts a single parameter which is the <see cref="Exception"/> containing details of the error.</param>
+        /// <param name="rethrowBufferProcessingException">Whether exceptions encountered during buffer processing should be rethrown when the next metric is logged.</param>
+        public LoopingWorkerThreadBufferProcessor(Int32 dequeueOperationLoopInterval, Action<Exception> bufferProcessingExceptionAction, bool rethrowBufferProcessingException)
+            : base(bufferProcessingExceptionAction, rethrowBufferProcessingException)
+        {
+            if (dequeueOperationLoopInterval < 1)
+                throw new ArgumentOutOfRangeException("dequeueOperationLoopInterval", dequeueOperationLoopInterval, $"Argument '{nameof(dequeueOperationLoopInterval)}' must be greater than or equal to 1.");
+
+            this.dequeueOperationLoopInterval = dequeueOperationLoopInterval;
+            loopIterationCompleteSignal = null;
+        }
+
+        /// <summary>
+        /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.LoopingWorkerThreadBufferProcessor class.
+        /// </summary>
+        /// <param name="dequeueOperationLoopInterval">The time to wait (in milliseconds) between iterations of the worker thread which dequeues and processes metric events.</param>
+        /// <param name="bufferProcessingExceptionAction">An action to invoke if an error occurs during buffer processing.  Accepts a single parameter which is the <see cref="Exception"/> containing details of the error.</param>
+        /// <param name="rethrowBufferProcessingException">Whether exceptions encountered during buffer processing should be rethrown when the next metric is logged.</param>
         /// <param name="loopIterationCompleteSignal">Signal that will be set when the worker thread processing is complete (for unit testing).</param>
         /// <param name="loopIterationCount">The number of iterations of the worker thread to process.</param>
         /// <remarks>This constructor is included to facilitate unit testing.</remarks>
-        public LoopingWorkerThreadBufferProcessor(Int32 dequeueOperationLoopInterval, ManualResetEvent loopIterationCompleteSignal, Int32 loopIterationCount) 
-            : this(dequeueOperationLoopInterval)
+        public LoopingWorkerThreadBufferProcessor(Int32 dequeueOperationLoopInterval, Action<Exception> bufferProcessingExceptionAction, bool rethrowBufferProcessingException, ManualResetEvent loopIterationCompleteSignal, Int32 loopIterationCount) 
+            : this(dequeueOperationLoopInterval, bufferProcessingExceptionAction, rethrowBufferProcessingException)
         {
             if (loopIterationCompleteSignal == null)
                 throw new ArgumentNullException(nameof(loopIterationCompleteSignal), $"Parameter '{nameof(loopIterationCompleteSignal)}' cannot be null.");

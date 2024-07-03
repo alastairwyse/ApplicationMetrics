@@ -32,6 +32,9 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         // Given the class under test uses 3 threads, having fully deterministic tests would mean having to create a lot of test-only event wait handles which would have to be continually checked for null in non-test operation.
         // The current implementation strikes a balance between having fully deterministic tests, and not interfering too much with normal runtime code/operation.
 
+        private Exception testBufferProcessingException;
+        private Int32 bufferProcessingExceptionActionCallCount;
+        private Action<Exception> testBufferProcessingExceptionAction;
         private IDateTimeProvider mockDateTimeProvider;
         private ManualResetEvent loopingTriggerThreadLoopCompleteSignal;
         private ManualResetEvent workerThreadCompleteSignal;
@@ -42,6 +45,13 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         [SetUp]
         protected void SetUp()
         {
+            testBufferProcessingException = null;
+            bufferProcessingExceptionActionCallCount = 0;
+            testBufferProcessingExceptionAction = (Exception bufferProcessingException) =>
+            {
+                testBufferProcessingException = bufferProcessingException;
+                bufferProcessingExceptionActionCallCount++;
+            };
             mockDateTimeProvider = Substitute.For<IDateTimeProvider>();
             loopingTriggerThreadLoopCompleteSignal = new ManualResetEvent(false);
             workerThreadCompleteSignal = new ManualResetEvent(false);
@@ -54,7 +64,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 testSizeLimitedLoopingWorkerThreadHybridBufferProcessor.NotifyStatusMetricEventBufferCleared();
                 testSizeLimitedLoopingWorkerThreadHybridBufferProcessor.NotifyIntervalMetricEventBufferCleared();
             };
-            testSizeLimitedLoopingWorkerThreadHybridBufferProcessor = new SizeLimitedLoopingWorkerThreadHybridBufferProcessorWithProtectedMethods(3, 250, mockDateTimeProvider, loopingTriggerThreadLoopCompleteSignal, workerThreadCompleteSignal);
+            testSizeLimitedLoopingWorkerThreadHybridBufferProcessor = new SizeLimitedLoopingWorkerThreadHybridBufferProcessorWithProtectedMethods(3, 250, testBufferProcessingExceptionAction, true, mockDateTimeProvider, loopingTriggerThreadLoopCompleteSignal, workerThreadCompleteSignal);
             testSizeLimitedLoopingWorkerThreadHybridBufferProcessor.BufferProcessed += processHandler;
             processEventsRaised = 0;
         }
@@ -73,7 +83,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         {
             var e = Assert.Throws<ArgumentOutOfRangeException>(delegate
             {
-                testSizeLimitedLoopingWorkerThreadHybridBufferProcessor = new SizeLimitedLoopingWorkerThreadHybridBufferProcessorWithProtectedMethods(3, 0, mockDateTimeProvider, loopingTriggerThreadLoopCompleteSignal, workerThreadCompleteSignal);
+                testSizeLimitedLoopingWorkerThreadHybridBufferProcessor = new SizeLimitedLoopingWorkerThreadHybridBufferProcessorWithProtectedMethods(3, 0, testBufferProcessingExceptionAction, true, mockDateTimeProvider, loopingTriggerThreadLoopCompleteSignal, workerThreadCompleteSignal);
             });
 
             Assert.That(e.Message, Does.StartWith("Parameter 'dequeueOperationLoopInterval' with value 0 cannot be less than 1."));
@@ -260,11 +270,22 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
             /// </summary>
             /// <param name="bufferSizeLimit">The total size of the buffers which when reached, triggers processing of the buffer contents.</param>
             /// <param name="dequeueOperationLoopInterval">The time to wait (in milliseconds) between buffer processing iterations.</param>
+            /// <param name="bufferProcessingExceptionAction">An action to invoke if an error occurs during buffer processing.  Accepts a single parameter which is the <see cref="Exception"/> containing details of the error.</param>
+            /// <param name="rethrowBufferProcessingException">Whether exceptions encountered during buffer processing should be rethrown when the next metric is logged.</param>
             /// <param name="dateTimeProvider">The provider to use for the current date and time.</param>
             /// <param name="loopingTriggerThreadLoopCompleteSignal">Signal that is waited on each time an iteration of the looping trigger thread completes (for unit testing).</param>
             /// <param name="workerThreadCompleteSignal">Signal that will be set when the worker thread processing is complete (for unit testing).</param>
-            public SizeLimitedLoopingWorkerThreadHybridBufferProcessorWithProtectedMethods(Int32 bufferSizeLimit, Int32 dequeueOperationLoopInterval, IDateTimeProvider dateTimeProvider, ManualResetEvent loopingTriggerThreadLoopCompleteSignal, ManualResetEvent workerThreadCompleteSignal)
-                : base(bufferSizeLimit, dequeueOperationLoopInterval, dateTimeProvider, loopingTriggerThreadLoopCompleteSignal, workerThreadCompleteSignal)
+            public SizeLimitedLoopingWorkerThreadHybridBufferProcessorWithProtectedMethods
+            (
+                Int32 bufferSizeLimit,
+                Int32 dequeueOperationLoopInterval,
+                Action<Exception> bufferProcessingExceptionAction,
+                bool rethrowBufferProcessingException,
+                IDateTimeProvider dateTimeProvider,
+                ManualResetEvent loopingTriggerThreadLoopCompleteSignal,
+                ManualResetEvent workerThreadCompleteSignal
+            )
+                : base(bufferSizeLimit, dequeueOperationLoopInterval, bufferProcessingExceptionAction, rethrowBufferProcessingException, dateTimeProvider, loopingTriggerThreadLoopCompleteSignal, workerThreadCompleteSignal)
             {
             }
         }

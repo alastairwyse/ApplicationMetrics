@@ -37,6 +37,10 @@ namespace ApplicationMetrics.MetricLoggers
         private Thread bufferProcessingWorkerThread;
         /// <summary>Set with any exception and state/context information which occurrs on the worker thread.  Null if no exception has occurred.</summary>
         private ExceptionDispatchInfo processingExceptionDispatchInfo;
+        /// <summary>An action to invoke if an error occurs during buffer processing.  Accepts a single parameter which is the <see cref="Exception"/> containing details of the error.</summary>
+        protected Action<Exception> bufferProcessingExceptionAction;
+        /// <summary>Whether exceptions encountered during buffer processing should be rethrown when the next metric is logged.</summary>
+        protected bool rethrowBufferProcessingException;
         /// <summary>Whether a stop request has been received.</summary>
         protected volatile bool stopRequestReceived;
         /// <summary>Whether any metric events remaining in the buffers when the Stop() method is called should be processed.</summary>
@@ -67,6 +71,8 @@ namespace ApplicationMetrics.MetricLoggers
             statusMetricEventsBuffered = 0;
             intervalMetricEventsBuffered = 0;
             processingExceptionDispatchInfo = null;
+            bufferProcessingExceptionAction = (Exception bufferProcessingException) => { };
+            rethrowBufferProcessingException = true;
             processRemainingBufferredMetricsOnStop = true; 
             stopRequestReceived = false;
             loopIterationCompleteSignal = null;
@@ -76,9 +82,23 @@ namespace ApplicationMetrics.MetricLoggers
         /// <summary>
         /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.WorkerThreadBufferProcessorBase class.
         /// </summary>
-        /// <param name="loopIterationCompleteSignal">Signal that will be set when the worker thread is complete.</param>
-        public WorkerThreadBufferProcessorBase(ManualResetEvent loopIterationCompleteSignal)
+        /// <param name="bufferProcessingExceptionAction">An action to invoke if an error occurs during buffer processing.  Accepts a single parameter which is the <see cref="Exception"/> containing details of the error.</param>
+        /// <param name="rethrowBufferProcessingException">Whether exceptions encountered during buffer processing should be rethrown when the next metric is logged.</param>
+        public WorkerThreadBufferProcessorBase(Action<Exception> bufferProcessingExceptionAction, bool rethrowBufferProcessingException)
             : this()
+        {
+            this.bufferProcessingExceptionAction = bufferProcessingExceptionAction;
+            this.rethrowBufferProcessingException = rethrowBufferProcessingException;
+        }
+
+        /// <summary>
+        /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.WorkerThreadBufferProcessorBase class.
+        /// </summary>
+        /// <param name="bufferProcessingExceptionAction">An action to invoke if an error occurs during buffer processing.  Accepts a single parameter which is the <see cref="Exception"/> containing details of the error.</param>
+        /// <param name="rethrowBufferProcessingException">Whether exceptions encountered during buffer processing should be rethrown when the next metric is logged.</param>
+        /// <param name="loopIterationCompleteSignal">Signal that will be set when the worker thread is complete.</param>
+        public WorkerThreadBufferProcessorBase(Action<Exception> bufferProcessingExceptionAction, bool rethrowBufferProcessingException, ManualResetEvent loopIterationCompleteSignal)
+            : this(bufferProcessingExceptionAction, rethrowBufferProcessingException)
         {
             this.loopIterationCompleteSignal = loopIterationCompleteSignal;
         }
@@ -178,18 +198,23 @@ namespace ApplicationMetrics.MetricLoggers
                 bufferProcessingWorkerThread = new Thread(() =>
                 {
                     String exceptionMessagePrefix = "Exception occurred on buffer processing worker thread at ";
-
+                    Boolean exceptionOccurred = false;
                     try
                     {
                         value.Invoke();
                     }
                     catch (Exception e)
                     {
+                        exceptionOccurred = true;
                         var wrappedException = new Exception($"{exceptionMessagePrefix} {DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff zzz")}.", e);
-                        Interlocked.Exchange(ref processingExceptionDispatchInfo, ExceptionDispatchInfo.Capture(wrappedException));
+                        bufferProcessingExceptionAction.Invoke(wrappedException);
+                        if (rethrowBufferProcessingException == true)
+                        {
+                            Interlocked.Exchange(ref processingExceptionDispatchInfo, ExceptionDispatchInfo.Capture(wrappedException));
+                        }
                     }
                     // If no exception has occurred, and 'processRemainingBufferredMetricsOnStop' is set true, process any remaining metric events
-                    if (processingExceptionDispatchInfo == null && TotalMetricEventsBufferred > 0 && processRemainingBufferredMetricsOnStop == true)
+                    if (exceptionOccurred == false && TotalMetricEventsBufferred > 0 && processRemainingBufferredMetricsOnStop == true)
                     {
                         try
                         {
@@ -197,8 +222,13 @@ namespace ApplicationMetrics.MetricLoggers
                         }
                         catch (Exception e)
                         {
+                            exceptionOccurred = true;
                             var wrappedException = new Exception($"{exceptionMessagePrefix} {DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff zzz")}.", e);
-                            Interlocked.Exchange(ref processingExceptionDispatchInfo, ExceptionDispatchInfo.Capture(wrappedException));
+                            bufferProcessingExceptionAction.Invoke(wrappedException);
+                            if (rethrowBufferProcessingException == true)
+                            {
+                                Interlocked.Exchange(ref processingExceptionDispatchInfo, ExceptionDispatchInfo.Capture(wrappedException));
+                            }
                         }
                     }
                     if (loopIterationCompleteSignal != null)

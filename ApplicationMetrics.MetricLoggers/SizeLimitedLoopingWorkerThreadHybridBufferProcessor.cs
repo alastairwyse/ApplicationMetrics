@@ -138,6 +138,20 @@ namespace ApplicationMetrics.MetricLoggers
         /// </summary>
         /// <param name="bufferSizeLimit">The total size of the buffers which when reached, triggers processing of the buffer contents.</param>
         /// <param name="dequeueOperationLoopInterval">The time to wait (in milliseconds) between buffer processing iterations.</param>
+        /// <param name="bufferProcessingExceptionAction">An action to invoke if an error occurs during buffer processing.  Accepts a single parameter which is the <see cref="Exception"/> containing details of the error.</param>
+        /// <param name="rethrowBufferProcessingException">Whether exceptions encountered during buffer processing should be rethrown when the next metric is logged.</param>
+        public SizeLimitedLoopingWorkerThreadHybridBufferProcessor(Int32 bufferSizeLimit, Int32 dequeueOperationLoopInterval, Action<Exception> bufferProcessingExceptionAction, bool rethrowBufferProcessingException)
+            : this (bufferSizeLimit, dequeueOperationLoopInterval)
+        {
+            base.bufferProcessingExceptionAction = bufferProcessingExceptionAction;
+            base.rethrowBufferProcessingException = rethrowBufferProcessingException;
+        }
+
+        /// <summary>
+        /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.SizeLimitedLoopingWorkerThreadHybridBufferProcessor class.
+        /// </summary>
+        /// <param name="bufferSizeLimit">The total size of the buffers which when reached, triggers processing of the buffer contents.</param>
+        /// <param name="dequeueOperationLoopInterval">The time to wait (in milliseconds) between buffer processing iterations.</param>
         /// <param name="dateTimeProvider">The provider to use for the current date and time.</param>
         public SizeLimitedLoopingWorkerThreadHybridBufferProcessor(Int32 bufferSizeLimit, Int32 dequeueOperationLoopInterval, IDateTimeProvider dateTimeProvider)
             : this(bufferSizeLimit, dequeueOperationLoopInterval)
@@ -150,12 +164,37 @@ namespace ApplicationMetrics.MetricLoggers
         /// </summary>
         /// <param name="bufferSizeLimit">The total size of the buffers which when reached, triggers processing of the buffer contents.</param>
         /// <param name="dequeueOperationLoopInterval">The time to wait (in milliseconds) between buffer processing iterations.</param>
+        /// <param name="bufferProcessingExceptionAction">An action to invoke if an error occurs during buffer processing.  Accepts a single parameter which is the <see cref="Exception"/> containing details of the error.</param>
+        /// <param name="rethrowBufferProcessingException">Whether exceptions encountered during buffer processing should be rethrown when the next metric is logged.</param>
+        /// <param name="dateTimeProvider">The provider to use for the current date and time.</param>
+        public SizeLimitedLoopingWorkerThreadHybridBufferProcessor(Int32 bufferSizeLimit, Int32 dequeueOperationLoopInterval, Action<Exception> bufferProcessingExceptionAction, bool rethrowBufferProcessingException, IDateTimeProvider dateTimeProvider)
+            : this(bufferSizeLimit, dequeueOperationLoopInterval, bufferProcessingExceptionAction, rethrowBufferProcessingException)
+        {
+            this.dateTimeProvider = dateTimeProvider;
+        }
+
+        /// <summary>
+        /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.SizeLimitedLoopingWorkerThreadHybridBufferProcessor class.
+        /// </summary>
+        /// <param name="bufferSizeLimit">The total size of the buffers which when reached, triggers processing of the buffer contents.</param>
+        /// <param name="dequeueOperationLoopInterval">The time to wait (in milliseconds) between buffer processing iterations.</param>
+        /// <param name="bufferProcessingExceptionAction">An action to invoke if an error occurs during buffer processing.  Accepts a single parameter which is the <see cref="Exception"/> containing details of the error.</param>
+        /// <param name="rethrowBufferProcessingException">Whether exceptions encountered during buffer processing should be rethrown when the next metric is logged.</param>
         /// <param name="dateTimeProvider">The provider to use for the current date and time.</param>
         /// <param name="loopingTriggerThreadLoopCompleteSignal">Signal that is waited on each time an iteration of the looping trigger thread completes (for unit testing).</param>
         /// <param name="workerThreadCompleteSignal">Signal that will be set when the worker thread processing is complete (for unit testing).</param>
         /// <remarks>This constructor is included to facilitate unit testing.</remarks>
-        public SizeLimitedLoopingWorkerThreadHybridBufferProcessor(Int32 bufferSizeLimit, Int32 dequeueOperationLoopInterval, IDateTimeProvider dateTimeProvider, ManualResetEvent loopingTriggerThreadLoopCompleteSignal, ManualResetEvent workerThreadCompleteSignal)
-            : this(bufferSizeLimit, dequeueOperationLoopInterval, dateTimeProvider)
+        public SizeLimitedLoopingWorkerThreadHybridBufferProcessor
+        (
+            Int32 bufferSizeLimit, 
+            Int32 dequeueOperationLoopInterval, 
+            Action<Exception> bufferProcessingExceptionAction, 
+            bool rethrowBufferProcessingException, 
+            IDateTimeProvider dateTimeProvider, 
+            ManualResetEvent loopingTriggerThreadLoopCompleteSignal, 
+            ManualResetEvent workerThreadCompleteSignal
+        )
+            : this(bufferSizeLimit, dequeueOperationLoopInterval, bufferProcessingExceptionAction, rethrowBufferProcessingException, dateTimeProvider)
         {
             this.loopingTriggerThreadLoopCompleteSignal = loopingTriggerThreadLoopCompleteSignal;
             base.loopIterationCompleteSignal = workerThreadCompleteSignal;
