@@ -197,7 +197,7 @@ namespace ApplicationMetrics.MetricLoggers
             {
                 bufferProcessingWorkerThread = new Thread(() =>
                 {
-                    String exceptionMessagePrefix = "Exception occurred on buffer processing worker thread at ";
+                    String exceptionMessagePrefix = "Exception occurred on buffer processing worker thread at";
                     Boolean exceptionOccurred = false;
                     try
                     {

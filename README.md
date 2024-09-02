@@ -111,7 +111,7 @@ MessageSender testMessageSender = new MessageSender(metricLogger);
 ````
 
 ##### 3) Choosing a Buffer Processing Strategy
-Metric logger classes implement IMetricLogger and generally derive from class MetricLoggerBuffer.  MetricLoggerBuffer buffers any logged metrics internally and persists the metrics periodically.  Classes implementing IBufferProcessingStrategy are passed to the MetricLoggerBuffer constructor, and determine when the buffers should be processed and the metric persisted.  3 implementations of IBufferProcessingStrategy are included...
+Metric logger classes implement IMetricLogger and generally derive from class MetricLoggerBuffer.  MetricLoggerBuffer buffers any logged metrics internally and persists the metrics periodically.  Classes implementing IBufferProcessingStrategy are passed to the MetricLoggerBuffer constructor, and determine when the buffers should be processed and the metrics persisted.  3 implementations of IBufferProcessingStrategy are included...
 
 <table>
   <tr>
