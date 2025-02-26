@@ -236,6 +236,12 @@ A detailed sample implementation...<br>
     <td><b>Changes</b></td>
   </tr>
   <tr>
+    <td valign="top">6.4.0</td>
+    <td>  
+      Added abstract class MetricLoggerBase to allow introducing MetricLogger implementations which adapt to other metric frameworks.
+    </td>
+  </tr>
+  <tr>
     <td valign="top">6.3.0</td>
     <td>  
       Added parameters to buffer processing classes to invoke a specified lambda on buffer processing failure, and to determine whether the exception causing the failure should be rethrown on the main metric logger classes' thread.

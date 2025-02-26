@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>ApplicationMetrics</id>
-    <version>6.3.0</version>
+    <version>6.4.0</version>
     <authors>Alastair Wyse</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">Apache-2.0</license>
@@ -12,8 +12,8 @@
 
 ApplicationMetrics includes several implementations of metric logger classes which write metrics and instrumentation information to files, and the console.  It also contains base classes which allow users to easily create metric loggers for logging to persistent data stores.</description>
     <summary>ApplicationMetrics provides interfaces and classes to allow simple logging of metric and instrumentation events from a client application</summary>
-    <releaseNotes>Added parameters to buffer processing classes to invoke a specified lambda on buffer processing failure, and to determine whether the exception causing the failure should be rethrown on the main metric logger classes' thread.</releaseNotes>
-    <copyright>Copyright © Alastair Wyse 2024</copyright>
+    <releaseNotes>Added abstract class MetricLoggerBase to allow introducing MetricLogger implementations which adapt to other metric frameworks.</releaseNotes>
+    <copyright>Copyright © Alastair Wyse 2025</copyright>
     <tags>metric metrics instrumentation client application counter statistics filter</tags>
     <icon>images\ApplicationMetrics.png</icon>
     <repository type="git" url="https://github.com/alastairwyse/ApplicationMetrics/" />
