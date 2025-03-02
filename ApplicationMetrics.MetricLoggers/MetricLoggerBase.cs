@@ -16,6 +16,7 @@
 
 using System;
 using System.Collections.Generic;
+using StandardAbstraction;
 
 namespace ApplicationMetrics.MetricLoggers
 {
@@ -24,30 +25,43 @@ namespace ApplicationMetrics.MetricLoggers
     /// </summary>
     public abstract class MetricLoggerBase
     {
-        // Dictionary object to temporarily store the start instance of any received interval metrics (when processing in non-interleaved mode)
-        private Dictionary<Type, IntervalMetricEventInstance> startIntervalMetricEventStore;
-        // Dictionary object to temporarily store the start instance of any received interval metrics (when processing in interleaved mode)
-        private Dictionary<Guid, IntervalMetricEventInstance> startIntervalMetricUniqueEventStore;
         /// <summary>The base time unit to use to log interval metrics.</summary>
         protected readonly IntervalMetricBaseTimeUnit intervalMetricBaseTimeUnit;
         /// <summary>Whether to support interleaving when processing interval metrics.  Set to null when the mode has not yet been determined (i.e. before the <see cref="IMetricLogger.End(Guid, IntervalMetric)"/> or <see cref="IMetricLogger.CancelBegin(Guid, IntervalMetric)"/> methods have been called).</summary>
         protected Nullable<Boolean> interleavedIntervalMetricsMode;
-        // Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed(e.g.End() method called before Begin()).
-        private bool intervalMetricChecking;
+        /// Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed(e.g.End() method called before Begin()).
+        protected bool intervalMetricChecking;
+        /// <summary>Used to measure elapsed time since starting the buffer processor.</summary>
+        protected IStopwatch stopWatch;
+        /// <summary>The timestamp at which the stopwatch was started.</summary>
+        protected System.DateTime startTime;
+        /// <summary>The value of the 'Frequency' property of the StopWatch object.</summary>
+        protected Int64 stopWatchFrequency;
+        /// <summary>Object which provides Guids.</summary>
+        protected IGuidProvider guidProvider;
+        // Dictionary object to temporarily store the start instance of any received interval metrics (when processing in non-interleaved mode)
+        private Dictionary<Type, IntervalMetricEventInstance> startIntervalMetricEventStore;
+        // Dictionary object to temporarily store the start instance of any received interval metrics (when processing in interleaved mode)
+        private Dictionary<Guid, IntervalMetricEventInstance> startIntervalMetricUniqueEventStore;
 
         /// <summary>
         /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.MetricLoggerBase class.
         /// </summary>
         /// <param name="intervalMetricBaseTimeUnit">The base time unit to use to log interval metrics.</param>
         /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).  Note that this parameter only has an effect when running in 'non-interleaved' mode.</param>
+        /// <param name="stopWatch">Used to measure elapsed time since starting the buffer processor.</param>
+        /// <param name="guidProvider">Object which provides Guids.</param>
         /// <remarks>The class uses a <see cref="Stopwatch"/> to calculate and log interval metrics.  Since the smallest unit of time supported by Stopwatch is a tick (100 nanoseconds), the smallest level of granularity supported when parameter <paramref name="intervalMetricBaseTimeUnit"/> is set to <see cref="IntervalMetricBaseTimeUnit.Nanosecond"/> is 100 nanoseconds.</remarks>
-        public MetricLoggerBase(IntervalMetricBaseTimeUnit intervalMetricBaseTimeUnit, bool intervalMetricChecking)
+        protected MetricLoggerBase(IntervalMetricBaseTimeUnit intervalMetricBaseTimeUnit, bool intervalMetricChecking, IStopwatch stopWatch, IGuidProvider guidProvider)
         {
-            startIntervalMetricEventStore = new Dictionary<Type, IntervalMetricEventInstance>();
-            startIntervalMetricUniqueEventStore = new Dictionary<Guid, IntervalMetricEventInstance>();
             this.intervalMetricBaseTimeUnit = intervalMetricBaseTimeUnit;
             this.interleavedIntervalMetricsMode = null;
             this.intervalMetricChecking = intervalMetricChecking;
+            this.stopWatch = stopWatch;
+            this.guidProvider = guidProvider;
+            stopWatchFrequency = stopWatch.Frequency;
+            startIntervalMetricEventStore = new Dictionary<Type, IntervalMetricEventInstance>();
+            startIntervalMetricUniqueEventStore = new Dictionary<Guid, IntervalMetricEventInstance>();
         }
 
         #region Private/Protected Methods
@@ -198,6 +212,46 @@ namespace ApplicationMetrics.MetricLoggers
                 {
                     throw new InvalidOperationException($"Received cancel '{intervalMetricEventInstance.Metric.Name}' with {nameof(UniqueIntervalMetricEventInstance.BeginId)} '{intervalMetricEventInstance.BeginId}' with no corresponding start interval metric.");
                 }
+            }
+        }
+
+        /// <summary>
+        /// Returns the current date and time as UTC from the 'stopWatch' property.
+        /// </summary>
+        /// <returns>The current date and time as UTC.</returns>
+        protected System.DateTime GetStopWatchUtcNow()
+        {
+            Int64 elapsedDateTimeTicks;
+            if (stopWatchFrequency == 10000000)
+            {
+                // On every system I've tested the StopWatch.Frequency property on, it's returned 10,000,000
+                //   Guessing this is maybe an upper limit of the property (since there's arguably not much point in supporting a frequency greated than the DateTime.Ticks resolution which is also 10,000,000/sec)
+                //   In any case, assuming the value is 10,000,000 on many systems, adding this shortcut to avoid conversion to double and overflow handling
+                elapsedDateTimeTicks = stopWatch.ElapsedTicks;
+            }
+            else
+            {
+                Double stopWatchTicksPerDateTimeTick = 10000000.0 / Convert.ToDouble(stopWatchFrequency);
+                Double elapsedDateTimeTicksDouble = stopWatchTicksPerDateTimeTick * Convert.ToDouble(stopWatch.ElapsedTicks);
+                try
+                {
+                    // Would like to not prevent overflow with a try/catch, but can't find any better way to do this
+                    //   Chance should be extremely low of ever hitting the catch block... time since starting the stopwatch would have to be > 29,000 years
+                    elapsedDateTimeTicks = Convert.ToInt64(elapsedDateTimeTicksDouble);
+                }
+                catch (OverflowException)
+                {
+                    elapsedDateTimeTicks = Int64.MaxValue;
+                }
+            }
+
+            if ((System.DateTime.MaxValue - startTime).Ticks < elapsedDateTimeTicks)
+            {
+                return System.DateTime.MaxValue.ToUniversalTime();
+            }
+            else
+            {
+                return startTime.AddTicks(elapsedDateTimeTicks);
             }
         }
 

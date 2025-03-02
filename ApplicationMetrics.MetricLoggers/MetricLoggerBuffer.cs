@@ -56,14 +56,6 @@ namespace ApplicationMetrics.MetricLoggers
         protected readonly EventHandler bufferProcessedEventHandler;
         /// <summary>Object which provides the current date and time.</summary>
         protected readonly IDateTime dateTime;
-        /// <summary>Used to measure elapsed time since starting the buffer processor.</summary>
-        protected readonly IStopwatch stopWatch;
-        /// <summary>Object which provides Guids.</summary>
-        protected readonly IGuidProvider guidProvider;
-        /// <summary>The timestamp at which the buffer processor was started.</summary>
-        protected System.DateTime startTime;
-        /// <summary>The value of the 'Frequency' property of the StopWatch object.</summary>
-        protected readonly Int64 stopWatchFrequency;
         /// <summary>Indicates whether the object has been disposed.</summary>
         protected bool disposed;
 
@@ -75,7 +67,7 @@ namespace ApplicationMetrics.MetricLoggers
         /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).  Note that this parameter only has an effect when running in 'non-interleaved' mode.</param>
         /// <remarks>The class uses a <see cref="Stopwatch"/> to calculate and log interval metrics.  Since the smallest unit of time supported by Stopwatch is a tick (100 nanoseconds), the smallest level of granularity supported when parameter <paramref name="intervalMetricBaseTimeUnit"/> is set to <see cref="IntervalMetricBaseTimeUnit.Nanosecond"/> is 100 nanoseconds.</remarks>
         protected MetricLoggerBuffer(IBufferProcessingStrategy bufferProcessingStrategy, IntervalMetricBaseTimeUnit intervalMetricBaseTimeUnit, bool intervalMetricChecking)
-            : base(intervalMetricBaseTimeUnit, intervalMetricChecking)
+            : base(intervalMetricBaseTimeUnit, intervalMetricChecking, new Stopwatch(), new DefaultGuidProvider())
         {
             countMetricEventQueue = new Queue<CountMetricEventInstance>();
             amountMetricEventQueue = new Queue<AmountMetricEventInstance>();
@@ -90,9 +82,6 @@ namespace ApplicationMetrics.MetricLoggers
             bufferProcessedEventHandler = delegate(object sender, EventArgs e) { DequeueAndProcessMetricEvents(); };
             this.bufferProcessingStrategy.BufferProcessed += bufferProcessedEventHandler;
             dateTime = new StandardAbstraction.DateTime();
-            stopWatch = new Stopwatch();
-            stopWatchFrequency = stopWatch.Frequency;
-            guidProvider = new DefaultGuidProvider();
         }
 
         /// <summary>
@@ -108,10 +97,10 @@ namespace ApplicationMetrics.MetricLoggers
         protected MetricLoggerBuffer(IBufferProcessingStrategy bufferProcessingStrategy, IntervalMetricBaseTimeUnit intervalMetricBaseTimeUnit, bool intervalMetricChecking, IDateTime dateTime, IStopwatch stopWatch, IGuidProvider guidProvider)
             : this(bufferProcessingStrategy, intervalMetricBaseTimeUnit, intervalMetricChecking)
         {
-            this.dateTime = dateTime;
-            this.stopWatch = stopWatch;
+            base.stopWatch = stopWatch;
+            base.guidProvider = guidProvider;
             stopWatchFrequency = stopWatch.Frequency;
-            this.guidProvider = guidProvider;
+            this.dateTime = dateTime;
         }
 
         /// <summary>
@@ -307,46 +296,6 @@ namespace ApplicationMetrics.MetricLoggers
             DequeueAndProcessAmountMetricEvents();
             DequeueAndProcessStatusMetricEvents();
             DequeueAndProcessIntervalMetricEvents();
-        }
-
-        /// <summary>
-        /// Returns the current date and time as UTC from the 'stopWatch' property.
-        /// </summary>
-        /// <returns>The current date and time as UTC.</returns>
-        protected System.DateTime GetStopWatchUtcNow()
-        {
-            Int64 elapsedDateTimeTicks;
-            if (stopWatchFrequency == 10000000)
-            {
-                // On every system I've tested the StopWatch.Frequency property on, it's returned 10,000,000
-                //   Guessing this is maybe an upper limit of the property (since there's arguably not much point in supporting a frequency greated than the DateTime.Ticks resolution which is also 10,000,000/sec)
-                //   In any case, assuming the value is 10,000,000 on many systems, adding this shortcut to avoid conversion to double and overflow handling
-                elapsedDateTimeTicks = stopWatch.ElapsedTicks;
-            }
-            else
-            {
-                Double stopWatchTicksPerDateTimeTick = 10000000.0 / Convert.ToDouble(stopWatchFrequency);
-                Double elapsedDateTimeTicksDouble = stopWatchTicksPerDateTimeTick * Convert.ToDouble(stopWatch.ElapsedTicks);
-                try
-                {
-                    // Would like to not prevent overflow with a try/catch, but can't find any better way to do this
-                    //   Chance should be extremely low of ever hitting the catch block... time since starting the stopwatch would have to be > 29,000 years
-                    elapsedDateTimeTicks = Convert.ToInt64(elapsedDateTimeTicksDouble);
-                }
-                catch (OverflowException)
-                {
-                    elapsedDateTimeTicks = Int64.MaxValue;
-                }
-            }
-            
-            if ((System.DateTime.MaxValue - startTime).Ticks < elapsedDateTimeTicks)
-            {
-                return System.DateTime.MaxValue.ToUniversalTime();
-            }
-            else
-            {
-                return startTime.AddTicks(elapsedDateTimeTicks);
-            }
         }
 
         /// <summary>

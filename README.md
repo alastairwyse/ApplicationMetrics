@@ -236,6 +236,12 @@ A detailed sample implementation...<br>
     <td><b>Changes</b></td>
   </tr>
   <tr>
+    <td valign="top">6.4.1</td>
+    <td>  
+      Further refactoring to allow introducing MetricLogger implementations which adapt to other metric frameworks.
+    </td>
+  </tr>
+  <tr>
     <td valign="top">6.4.0</td>
     <td>  
       Added abstract class MetricLoggerBase to allow introducing MetricLogger implementations which adapt to other metric frameworks.
