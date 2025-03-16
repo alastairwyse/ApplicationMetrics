@@ -16,6 +16,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using StandardAbstraction;
 
 namespace ApplicationMetrics.MetricLoggers
@@ -39,20 +40,27 @@ namespace ApplicationMetrics.MetricLoggers
         protected Int64 stopWatchFrequency;
         /// <summary>Object which provides Guids.</summary>
         protected IGuidProvider guidProvider;
-        // Dictionary object to temporarily store the start instance of any received interval metrics (when processing in non-interleaved mode)
+        /// <summary>Whether the methods in the class will be called concurrently from multiple threads.</summary>
+        private Boolean supportConcurrency;
+        /// <summary>Dictionary object to temporarily store the start instance of any received interval metrics (when processing in non-interleaved mode).</summary>
         private Dictionary<Type, IntervalMetricEventInstance> startIntervalMetricEventStore;
-        // Dictionary object to temporarily store the start instance of any received interval metrics (when processing in interleaved mode)
+        /// <summary>Dictionary object to temporarily store the start instance of any received interval metrics (when processing in interleaved mode).</summary>
         private Dictionary<Guid, IntervalMetricEventInstance> startIntervalMetricUniqueEventStore;
+        /// <summary>Dictionary object to temporarily store the start instance of any received interval metrics (when processing in concurrent and non-interleaved mode).</summary>
+        private ConcurrentDictionary<Type, IntervalMetricEventInstance> startIntervalMetricConcurrentEventStore;
+        /// <summary>Dictionary object to temporarily store the start instance of any received interval metrics (when processing in concurrent and interleaved mode).</summary>
+        private ConcurrentDictionary<Guid, IntervalMetricEventInstance> startIntervalMetricUniqueConcurrentEventStore;
 
         /// <summary>
         /// Initialises a new instance of the ApplicationMetrics.MetricLoggers.MetricLoggerBase class.
         /// </summary>
         /// <param name="intervalMetricBaseTimeUnit">The base time unit to use to log interval metrics.</param>
         /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).  Note that this parameter only has an effect when running in 'non-interleaved' mode.</param>
+        /// <param name="supportConcurrency">Whether the methods in the class will be called concurrently from multiple threads.</param>
         /// <param name="stopWatch">Used to measure elapsed time since starting the buffer processor.</param>
         /// <param name="guidProvider">Object which provides Guids.</param>
         /// <remarks>The class uses a <see cref="Stopwatch"/> to calculate and log interval metrics.  Since the smallest unit of time supported by Stopwatch is a tick (100 nanoseconds), the smallest level of granularity supported when parameter <paramref name="intervalMetricBaseTimeUnit"/> is set to <see cref="IntervalMetricBaseTimeUnit.Nanosecond"/> is 100 nanoseconds.</remarks>
-        protected MetricLoggerBase(IntervalMetricBaseTimeUnit intervalMetricBaseTimeUnit, bool intervalMetricChecking, IStopwatch stopWatch, IGuidProvider guidProvider)
+        protected MetricLoggerBase(IntervalMetricBaseTimeUnit intervalMetricBaseTimeUnit, Boolean intervalMetricChecking, Boolean supportConcurrency, IStopwatch stopWatch, IGuidProvider guidProvider)
         {
             this.intervalMetricBaseTimeUnit = intervalMetricBaseTimeUnit;
             this.interleavedIntervalMetricsMode = null;
@@ -60,158 +68,67 @@ namespace ApplicationMetrics.MetricLoggers
             this.stopWatch = stopWatch;
             this.guidProvider = guidProvider;
             stopWatchFrequency = stopWatch.Frequency;
-            startIntervalMetricEventStore = new Dictionary<Type, IntervalMetricEventInstance>();
-            startIntervalMetricUniqueEventStore = new Dictionary<Guid, IntervalMetricEventInstance>();
+            this.supportConcurrency = supportConcurrency;
+            if (supportConcurrency == true)
+            {
+                startIntervalMetricConcurrentEventStore = new ConcurrentDictionary<Type, IntervalMetricEventInstance>();
+                startIntervalMetricUniqueConcurrentEventStore = new ConcurrentDictionary<Guid, IntervalMetricEventInstance>();
+            }
+            else
+            {
+                startIntervalMetricEventStore = new Dictionary<Type, IntervalMetricEventInstance>();
+                startIntervalMetricUniqueEventStore = new Dictionary<Guid, IntervalMetricEventInstance>();
+            }
         }
 
         #region Private/Protected Methods
 
         /// <summary>
-        /// Processes a <see cref="UniqueIntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.Start">'Start'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see> as part of the call the to <see cref="MetricLoggerBuffer.DequeueAndProcessIntervalMetricEvents">DequeueAndProcessIntervalMetricEvents</see>() method.
+        /// Processes a <see cref="UniqueIntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.Start">'Start'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see>.
         /// </summary>
         /// <param name="intervalMetricEventInstance">The <see cref="UniqueIntervalMetricEventInstance"/> to process.</param>
         protected void ProcessStartIntervalMetricEvent(UniqueIntervalMetricEventInstance intervalMetricEventInstance)
         {
-            // Need to handle the case that 'interleavedIntervalMetricsMode' has not yet been set
-            if (interleavedIntervalMetricsMode.HasValue == false || interleavedIntervalMetricsMode == false)
+            if (supportConcurrency == true)
             {
-                if (startIntervalMetricEventStore.ContainsKey(intervalMetricEventInstance.MetricType) == true)
-                {
-                    // If a start interval event of this type was already received and checking is enabled, throw an exception
-                    if (intervalMetricChecking == true)
-                    {
-                        throw new InvalidOperationException($"Received duplicate begin '{intervalMetricEventInstance.Metric.Name}' metrics.");
-                    }
-                    // If checking is not enabled, replace the currently stored begin interval event with the new one
-                    else
-                    {
-                        startIntervalMetricEventStore.Remove(intervalMetricEventInstance.MetricType);
-                        startIntervalMetricEventStore.Add(intervalMetricEventInstance.MetricType, intervalMetricEventInstance);
-                    }
-                }
-                else
-                {
-                    startIntervalMetricEventStore.Add(intervalMetricEventInstance.MetricType, intervalMetricEventInstance);
-                }
+                ProcessStartIntervalMetricEventConcurrentImplementation(intervalMetricEventInstance);
             }
-            if (interleavedIntervalMetricsMode.HasValue == false || interleavedIntervalMetricsMode == true)
+            else
             {
-                startIntervalMetricUniqueEventStore.Add(intervalMetricEventInstance.BeginId, intervalMetricEventInstance);
+                ProcessStartIntervalMetricEventImplementation(intervalMetricEventInstance);
             }
         }
 
         /// <summary>
-        /// Processes an <see cref="UniqueIntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.End">'End'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see> as part of the call the to <see cref="MetricLoggerBuffer.DequeueAndProcessIntervalMetricEvents">DequeueAndProcessIntervalMetricEvents</see>() method.
+        /// Processes a <see cref="UniqueIntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.End">'End'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see>.
         /// </summary>
         /// <param name="intervalMetricEventInstance">The <see cref="UniqueIntervalMetricEventInstance"/> to process.</param>
         /// <returns>A tuple containing 2 values: the <see cref="IntervalMetricEventInstance"/> generated as a result of the metric <see cref="IntervalMetricEventTimePoint.End">end</see>, and the duration of the interval metric.  Returns null if no metric was generated (e.g. in the case constructor parameter 'intervalMetricChecking' was set to false).</returns>
         protected Tuple<IntervalMetricEventInstance, Int64> ProcessEndIntervalMetricEvent(UniqueIntervalMetricEventInstance intervalMetricEventInstance)
         {
-            if (interleavedIntervalMetricsMode == false)
+            if (supportConcurrency == true)
             {
-                if (startIntervalMetricEventStore.ContainsKey(intervalMetricEventInstance.MetricType) == true)
-                {
-                    TimeSpan intervalDuration = intervalMetricEventInstance.EventTime.Subtract(startIntervalMetricEventStore[intervalMetricEventInstance.MetricType].EventTime);
-                    Int64 intervalDurationTicks = intervalDuration.Ticks;
-                    if (intervalDurationTicks < 0)
-                    {
-                        intervalDurationTicks = 0;
-                    }
-                    Int64 intervalDurationBaseTimeUnit;
-                    if (intervalMetricBaseTimeUnit == IntervalMetricBaseTimeUnit.Millisecond)
-                    {
-                        intervalDurationBaseTimeUnit = intervalDurationTicks / 10000;
-                    }
-                    else
-                    {
-                        intervalDurationBaseTimeUnit = ConvertTicksToNanoSeconds(intervalDurationTicks);
-                    }
-                    var returnTuple = new Tuple<IntervalMetricEventInstance, Int64>(startIntervalMetricEventStore[intervalMetricEventInstance.MetricType], intervalDurationBaseTimeUnit);
-                    startIntervalMetricEventStore.Remove(intervalMetricEventInstance.MetricType);
-
-                    return returnTuple;
-                }
-                else
-                {
-                    // If no corresponding start interval event of this type exists and checking is enabled, throw an exception
-                    if (intervalMetricChecking == true)
-                    {
-                        throw new InvalidOperationException($"Received end '{intervalMetricEventInstance.Metric.Name}' with no corresponding start interval metric.");
-                    }
-                    // If checking is not enabled discard the interval event
-
-                    return null;
-                }
+                return ProcessEndIntervalMetricEventConcurrentImplementation(intervalMetricEventInstance);
             }
             else
             {
-                if (startIntervalMetricUniqueEventStore.ContainsKey(intervalMetricEventInstance.BeginId) == true)
-                {
-                    if (startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId].MetricType != intervalMetricEventInstance.MetricType)
-                        throw new ArgumentException($"Metric started with BeginId '{intervalMetricEventInstance.BeginId}' was a '{startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId].Metric.Name}' metric, but {nameof(IMetricLogger.End)}() method was called with a '{intervalMetricEventInstance.Metric.Name}' metric.");
-
-                    TimeSpan intervalDuration = intervalMetricEventInstance.EventTime.Subtract(startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId].EventTime);
-                    Int64 intervalDurationTicks = intervalDuration.Ticks;
-                    if (intervalDurationTicks < 0)
-                    {
-                        intervalDurationTicks = 0;
-                    }
-                    Int64 intervalDurationBaseTimeUnit;
-                    if (intervalMetricBaseTimeUnit == IntervalMetricBaseTimeUnit.Millisecond)
-                    {
-                        intervalDurationBaseTimeUnit = Convert.ToInt64(intervalDurationTicks) / 10000;
-                    }
-                    else
-                    {
-                        intervalDurationBaseTimeUnit = ConvertTicksToNanoSeconds(intervalDurationTicks);
-                    }
-                    var returnTuple = new Tuple<IntervalMetricEventInstance, Int64>(startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId], intervalDurationBaseTimeUnit);
-                    startIntervalMetricUniqueEventStore.Remove(intervalMetricEventInstance.BeginId);
-
-                    return returnTuple;
-                }
-                else
-                {
-                    throw new InvalidOperationException($"Received end '{intervalMetricEventInstance.Metric.Name}' with {nameof(UniqueIntervalMetricEventInstance.BeginId)} '{intervalMetricEventInstance.BeginId}' with no corresponding start interval metric.");
-                }
+                return ProcessEndIntervalMetricEventImplementation(intervalMetricEventInstance);
             }
         }
 
         /// <summary>
-        /// Processes an <see cref="UniqueIntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.Cancel">'Cancel'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see> as part of the call the to <see cref="MetricLoggerBuffer.DequeueAndProcessIntervalMetricEvents">DequeueAndProcessIntervalMetricEvents</see>() method.
+        /// Processes a <see cref="UniqueIntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.Cancel">'Cancel'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see>.
         /// </summary>
         /// <param name="intervalMetricEventInstance">The <see cref="UniqueIntervalMetricEventInstance"/> to process.</param>
         protected void ProcessCancelIntervalMetricEvent(UniqueIntervalMetricEventInstance intervalMetricEventInstance)
         {
-            if (interleavedIntervalMetricsMode == false)
+            if (supportConcurrency == true)
             {
-                if (startIntervalMetricEventStore.ContainsKey(intervalMetricEventInstance.MetricType) == true)
-                {
-                    startIntervalMetricEventStore.Remove(intervalMetricEventInstance.MetricType);
-                }
-                else
-                {
-                    // If no corresponding start interval event of this type exists and checking is enabled, throw an exception
-                    if (intervalMetricChecking == true)
-                    {
-                        throw new InvalidOperationException("Received cancel '" + intervalMetricEventInstance.Metric.Name + "' with no corresponding start interval metric.");
-                    }
-                    // If checking is not enabled discard the interval event
-                }
+                ProcessCancelIntervalMetricEventConcurrentImplementation(intervalMetricEventInstance);
             }
             else
             {
-                if (startIntervalMetricUniqueEventStore.ContainsKey(intervalMetricEventInstance.BeginId) == true)
-                {
-                    if (startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId].MetricType != intervalMetricEventInstance.MetricType)
-                        throw new ArgumentException($"Metric started with BeginId '{intervalMetricEventInstance.BeginId}' was a '{startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId].Metric.Name}' metric, but {nameof(IMetricLogger.CancelBegin)}() method was called with a '{intervalMetricEventInstance.Metric.Name}' metric.");
-
-                    startIntervalMetricUniqueEventStore.Remove(intervalMetricEventInstance.BeginId);
-                }
-                else
-                {
-                    throw new InvalidOperationException($"Received cancel '{intervalMetricEventInstance.Metric.Name}' with {nameof(UniqueIntervalMetricEventInstance.BeginId)} '{intervalMetricEventInstance.BeginId}' with no corresponding start interval metric.");
-                }
+                ProcessCancelIntervalMetricEventImplementation(intervalMetricEventInstance);
             }
         }
 
@@ -252,6 +169,292 @@ namespace ApplicationMetrics.MetricLoggers
             else
             {
                 return startTime.AddTicks(elapsedDateTimeTicks);
+            }
+        }
+
+        /// <summary>
+        /// Processes a <see cref="UniqueIntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.Start">'Start'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see>.
+        /// </summary>
+        /// <param name="intervalMetricEventInstance">The <see cref="UniqueIntervalMetricEventInstance"/> to process.</param>
+        private void ProcessStartIntervalMetricEventImplementation(UniqueIntervalMetricEventInstance intervalMetricEventInstance)
+        {
+            // Need to handle the case that 'interleavedIntervalMetricsMode' has not yet been set
+            if (interleavedIntervalMetricsMode.HasValue == false || interleavedIntervalMetricsMode == false)
+            {
+                if (startIntervalMetricEventStore.ContainsKey(intervalMetricEventInstance.MetricType) == true)
+                {
+                    // If a start interval event of this type was already received and checking is enabled, throw an exception
+                    if (intervalMetricChecking == true)
+                    {
+                        throw new InvalidOperationException($"Received duplicate begin '{intervalMetricEventInstance.Metric.Name}' metrics.");
+                    }
+                    // If checking is not enabled, replace the currently stored begin interval event with the new one
+                    else
+                    {
+                        startIntervalMetricEventStore.Remove(intervalMetricEventInstance.MetricType);
+                        startIntervalMetricEventStore.Add(intervalMetricEventInstance.MetricType, intervalMetricEventInstance);
+                    }
+                }
+                else
+                {
+                    startIntervalMetricEventStore.Add(intervalMetricEventInstance.MetricType, intervalMetricEventInstance);
+                }
+            }
+            if (interleavedIntervalMetricsMode.HasValue == false || interleavedIntervalMetricsMode == true)
+            {
+                startIntervalMetricUniqueEventStore.Add(intervalMetricEventInstance.BeginId, intervalMetricEventInstance);
+            }
+        }
+
+        /// <summary>
+        /// Processes a <see cref="UniqueIntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.Start">'Start'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see>, supporting concurrent calls from multiple threads.
+        /// </summary>
+        /// <param name="intervalMetricEventInstance">The <see cref="UniqueIntervalMetricEventInstance"/> to process.</param>
+        private void ProcessStartIntervalMetricEventConcurrentImplementation(UniqueIntervalMetricEventInstance intervalMetricEventInstance)
+        {
+            // Need to handle the case that 'interleavedIntervalMetricsMode' has not yet been set
+            if (interleavedIntervalMetricsMode.HasValue == false || interleavedIntervalMetricsMode == false)
+            {
+                if (startIntervalMetricConcurrentEventStore.ContainsKey(intervalMetricEventInstance.MetricType) && intervalMetricChecking == true)
+                {
+                    // If a start interval event of this type was already received and checking is enabled, throw an exception
+                    throw new InvalidOperationException($"Received duplicate begin '{intervalMetricEventInstance.Metric.Name}' metrics.");
+                }
+                else
+                {
+                    startIntervalMetricConcurrentEventStore[intervalMetricEventInstance.MetricType] = intervalMetricEventInstance;
+                }
+            }
+            if (interleavedIntervalMetricsMode.HasValue == false || interleavedIntervalMetricsMode == true)
+            {
+                // Not checking for a false return value here, since the 'BeginId' property should always be a unique Guid, and hence should never already exist in the dictionary
+                startIntervalMetricUniqueConcurrentEventStore.TryAdd(intervalMetricEventInstance.BeginId, intervalMetricEventInstance);
+            }
+        }
+
+        /// <summary>
+        /// Processes a <see cref="UniqueIntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.End">'End'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see>.
+        /// </summary>
+        /// <param name="intervalMetricEventInstance">The <see cref="UniqueIntervalMetricEventInstance"/> to process.</param>
+        /// <returns>A tuple containing 2 values: the <see cref="IntervalMetricEventInstance"/> generated as a result of the metric <see cref="IntervalMetricEventTimePoint.End">end</see>, and the duration of the interval metric.  Returns null if no metric was generated (e.g. in the case constructor parameter 'intervalMetricChecking' was set to false).</returns>
+        private Tuple<IntervalMetricEventInstance, Int64> ProcessEndIntervalMetricEventImplementation(UniqueIntervalMetricEventInstance intervalMetricEventInstance)
+        {
+            if (interleavedIntervalMetricsMode == false)
+            {
+                if (startIntervalMetricEventStore.ContainsKey(intervalMetricEventInstance.MetricType) == true)
+                {
+                    TimeSpan intervalDuration = intervalMetricEventInstance.EventTime.Subtract(startIntervalMetricEventStore[intervalMetricEventInstance.MetricType].EventTime);
+                    Int64 intervalDurationTicks = intervalDuration.Ticks;
+                    if (intervalDurationTicks < 0)
+                    {
+                        intervalDurationTicks = 0;
+                    }
+                    Int64 intervalDurationBaseTimeUnit;
+                    if (intervalMetricBaseTimeUnit == IntervalMetricBaseTimeUnit.Millisecond)
+                    {
+                        intervalDurationBaseTimeUnit = intervalDurationTicks / 10000;
+                    }
+                    else
+                    {
+                        intervalDurationBaseTimeUnit = ConvertTicksToNanoSeconds(intervalDurationTicks);
+                    }
+                    var returnTuple = new Tuple<IntervalMetricEventInstance, Int64>(startIntervalMetricEventStore[intervalMetricEventInstance.MetricType], intervalDurationBaseTimeUnit);
+                    startIntervalMetricEventStore.Remove(intervalMetricEventInstance.MetricType);
+
+                    return returnTuple;
+                }
+                else
+                {
+                    // If no corresponding begin interval event of this type exists and checking is enabled, throw an exception
+                    if (intervalMetricChecking == true)
+                    {
+                        throw new InvalidOperationException($"Received end '{intervalMetricEventInstance.Metric.Name}' with no corresponding begin interval metric.");
+                    }
+                    // If checking is not enabled discard the interval event
+
+                    return null;
+                }
+            }
+            else
+            {
+                if (startIntervalMetricUniqueEventStore.ContainsKey(intervalMetricEventInstance.BeginId) == true)
+                {
+                    if (startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId].MetricType != intervalMetricEventInstance.MetricType)
+                        throw new ArgumentException($"Metric started with BeginId '{intervalMetricEventInstance.BeginId}' was a '{startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId].Metric.Name}' metric, but {nameof(IMetricLogger.End)}() method was called with a '{intervalMetricEventInstance.Metric.Name}' metric.");
+
+                    TimeSpan intervalDuration = intervalMetricEventInstance.EventTime.Subtract(startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId].EventTime);
+                    Int64 intervalDurationTicks = intervalDuration.Ticks;
+                    if (intervalDurationTicks < 0)
+                    {
+                        intervalDurationTicks = 0;
+                    }
+                    Int64 intervalDurationBaseTimeUnit;
+                    if (intervalMetricBaseTimeUnit == IntervalMetricBaseTimeUnit.Millisecond)
+                    {
+                        intervalDurationBaseTimeUnit = Convert.ToInt64(intervalDurationTicks) / 10000;
+                    }
+                    else
+                    {
+                        intervalDurationBaseTimeUnit = ConvertTicksToNanoSeconds(intervalDurationTicks);
+                    }
+                    var returnTuple = new Tuple<IntervalMetricEventInstance, Int64>(startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId], intervalDurationBaseTimeUnit);
+                    startIntervalMetricUniqueEventStore.Remove(intervalMetricEventInstance.BeginId);
+
+                    return returnTuple;
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Received end '{intervalMetricEventInstance.Metric.Name}' with {nameof(UniqueIntervalMetricEventInstance.BeginId)} '{intervalMetricEventInstance.BeginId}' with no corresponding begin interval metric.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Processes a <see cref="UniqueIntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.End">'End'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see>, supporting concurrent calls from multiple threads..
+        /// </summary>
+        /// <param name="intervalMetricEventInstance">The <see cref="UniqueIntervalMetricEventInstance"/> to process.</param>
+        /// <returns>A tuple containing 2 values: the <see cref="IntervalMetricEventInstance"/> generated as a result of the metric <see cref="IntervalMetricEventTimePoint.End">end</see>, and the duration of the interval metric.  Returns null if no metric was generated (e.g. in the case constructor parameter 'intervalMetricChecking' was set to false).</returns>
+        private Tuple<IntervalMetricEventInstance, Int64> ProcessEndIntervalMetricEventConcurrentImplementation(UniqueIntervalMetricEventInstance intervalMetricEventInstance)
+        {
+            if (interleavedIntervalMetricsMode == false)
+            {
+                Boolean startIntervalMetricExists = startIntervalMetricConcurrentEventStore.TryRemove(intervalMetricEventInstance.MetricType, out IntervalMetricEventInstance startIntervalMetric);
+                if (startIntervalMetricExists == true)
+                {
+                    TimeSpan intervalDuration = intervalMetricEventInstance.EventTime.Subtract(startIntervalMetric.EventTime);
+                    Int64 intervalDurationTicks = intervalDuration.Ticks;
+                    if (intervalDurationTicks < 0)
+                    {
+                        intervalDurationTicks = 0;
+                    }
+                    Int64 intervalDurationBaseTimeUnit;
+                    if (intervalMetricBaseTimeUnit == IntervalMetricBaseTimeUnit.Millisecond)
+                    {
+                        intervalDurationBaseTimeUnit = intervalDurationTicks / 10000;
+                    }
+                    else
+                    {
+                        intervalDurationBaseTimeUnit = ConvertTicksToNanoSeconds(intervalDurationTicks);
+                    }
+                    var returnTuple = new Tuple<IntervalMetricEventInstance, Int64>(startIntervalMetric, intervalDurationBaseTimeUnit);
+
+                    return returnTuple;
+                }
+                else
+                {
+                    // If no corresponding begin interval event of this type exists and checking is enabled, throw an exception
+                    if (intervalMetricChecking == true)
+                    {
+                        throw new InvalidOperationException($"Received end '{intervalMetricEventInstance.Metric.Name}' with no corresponding begin interval metric.");
+                    }
+                    // If checking is not enabled discard the interval event
+
+                    return null;
+                }
+            }
+            else
+            {
+                Boolean startIntervalMetricExists = startIntervalMetricUniqueConcurrentEventStore.TryRemove(intervalMetricEventInstance.BeginId, out IntervalMetricEventInstance startIntervalMetric);
+                if (startIntervalMetricExists == true)
+                {
+                    if (startIntervalMetric.MetricType != intervalMetricEventInstance.MetricType)
+                        throw new ArgumentException($"Metric started with BeginId '{intervalMetricEventInstance.BeginId}' was a '{startIntervalMetric.Metric.Name}' metric, but {nameof(IMetricLogger.End)}() method was called with a '{intervalMetricEventInstance.Metric.Name}' metric.");
+
+                    TimeSpan intervalDuration = intervalMetricEventInstance.EventTime.Subtract(startIntervalMetric.EventTime);
+                    Int64 intervalDurationTicks = intervalDuration.Ticks;
+                    if (intervalDurationTicks < 0)
+                    {
+                        intervalDurationTicks = 0;
+                    }
+                    Int64 intervalDurationBaseTimeUnit;
+                    if (intervalMetricBaseTimeUnit == IntervalMetricBaseTimeUnit.Millisecond)
+                    {
+                        intervalDurationBaseTimeUnit = Convert.ToInt64(intervalDurationTicks) / 10000;
+                    }
+                    else
+                    {
+                        intervalDurationBaseTimeUnit = ConvertTicksToNanoSeconds(intervalDurationTicks);
+                    }
+                    var returnTuple = new Tuple<IntervalMetricEventInstance, Int64>(startIntervalMetric, intervalDurationBaseTimeUnit);
+
+                    return returnTuple;
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Received end '{intervalMetricEventInstance.Metric.Name}' with {nameof(UniqueIntervalMetricEventInstance.BeginId)} '{intervalMetricEventInstance.BeginId}' with no corresponding begin interval metric.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Processes a <see cref="UniqueIntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.Cancel">'Cancel'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see>.
+        /// </summary>
+        /// <param name="intervalMetricEventInstance">The <see cref="UniqueIntervalMetricEventInstance"/> to process.</param>
+        private void ProcessCancelIntervalMetricEventImplementation(UniqueIntervalMetricEventInstance intervalMetricEventInstance)
+        {
+            if (interleavedIntervalMetricsMode == false)
+            {
+                if (startIntervalMetricEventStore.ContainsKey(intervalMetricEventInstance.MetricType) == true)
+                {
+                    startIntervalMetricEventStore.Remove(intervalMetricEventInstance.MetricType);
+                }
+                else
+                {
+                    // If no corresponding begin interval event of this type exists and checking is enabled, throw an exception
+                    if (intervalMetricChecking == true)
+                    {
+                        throw new InvalidOperationException("Received cancel '" + intervalMetricEventInstance.Metric.Name + "' with no corresponding begin interval metric.");
+                    }
+                    // If checking is not enabled discard the interval event
+                }
+            }
+            else
+            {
+                if (startIntervalMetricUniqueEventStore.ContainsKey(intervalMetricEventInstance.BeginId) == true)
+                {
+                    if (startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId].MetricType != intervalMetricEventInstance.MetricType)
+                        throw new ArgumentException($"Metric started with BeginId '{intervalMetricEventInstance.BeginId}' was a '{startIntervalMetricUniqueEventStore[intervalMetricEventInstance.BeginId].Metric.Name}' metric, but {nameof(IMetricLogger.CancelBegin)}() method was called with a '{intervalMetricEventInstance.Metric.Name}' metric.");
+
+                    startIntervalMetricUniqueEventStore.Remove(intervalMetricEventInstance.BeginId);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Received cancel '{intervalMetricEventInstance.Metric.Name}' with {nameof(UniqueIntervalMetricEventInstance.BeginId)} '{intervalMetricEventInstance.BeginId}' with no corresponding begin interval metric.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Processes a <see cref="UniqueIntervalMetricEventInstance"/> with a <see cref="IntervalMetricEventTimePoint.Cancel">'Cancel'</see> <see cref="IntervalMetricEventInstance.TimePoint">TimePoint</see>, supporting concurrent calls from multiple threads..
+        /// </summary>
+        /// <param name="intervalMetricEventInstance">The <see cref="UniqueIntervalMetricEventInstance"/> to process.</param>
+        private void ProcessCancelIntervalMetricEventConcurrentImplementation(UniqueIntervalMetricEventInstance intervalMetricEventInstance)
+        {
+            if (interleavedIntervalMetricsMode == false)
+            {
+                Boolean startIntervalMetricExists = startIntervalMetricConcurrentEventStore.TryRemove(intervalMetricEventInstance.MetricType, out IntervalMetricEventInstance startIntervalMetric);
+                if (startIntervalMetricExists == false)
+                {
+                    // If no corresponding begin interval event of this type exists and checking is enabled, throw an exception
+                    if (intervalMetricChecking == true)
+                    {
+                        throw new InvalidOperationException("Received cancel '" + intervalMetricEventInstance.Metric.Name + "' with no corresponding begin interval metric.");
+                    }
+                    // If checking is not enabled discard the interval event
+                }
+            }
+            else
+            {
+                Boolean startIntervalMetricExists = startIntervalMetricUniqueConcurrentEventStore.TryRemove(intervalMetricEventInstance.BeginId, out IntervalMetricEventInstance startIntervalMetric);
+                if (startIntervalMetricExists == true)
+                {
+                    if (startIntervalMetric.MetricType != intervalMetricEventInstance.MetricType)
+                        throw new ArgumentException($"Metric started with BeginId '{intervalMetricEventInstance.BeginId}' was a '{startIntervalMetric.Metric.Name}' metric, but {nameof(IMetricLogger.CancelBegin)}() method was called with a '{intervalMetricEventInstance.Metric.Name}' metric.");
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Received cancel '{intervalMetricEventInstance.Metric.Name}' with {nameof(UniqueIntervalMetricEventInstance.BeginId)} '{intervalMetricEventInstance.BeginId}' with no corresponding begin interval metric.");
+                }
             }
         }
 

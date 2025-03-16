@@ -241,7 +241,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 testMetricLoggerBuffer.DequeueAndProcessMetricEvents();
             });
 
-            Assert.That(e.Message, Does.StartWith($"Received end '{new MessageProcessingTime().Name}' with no corresponding start interval metric."));
+            Assert.That(e.Message, Does.StartWith($"Received end '{new MessageProcessingTime().Name}' with no corresponding begin interval metric."));
         }
 
         [Test]
@@ -264,7 +264,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 testMetricLoggerBuffer.DequeueAndProcessMetricEvents();
             });
 
-            Assert.That(e.Message, Does.StartWith($"Received end '{new MessageProcessingTime().Name}' with BeginId '{testBeginId.ToString()}' with no corresponding start interval metric."));
+            Assert.That(e.Message, Does.StartWith($"Received end '{new MessageProcessingTime().Name}' with BeginId '{testBeginId.ToString()}' with no corresponding begin interval metric."));
         }
 
         [Test]
@@ -336,7 +336,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
         }
 
         [Test]
-        public void End_InterleavedModeAndBeginIdParameterDoesntMatchIntervalMetricType()
+        public void End_InterleavedModeAndEndIntervalMetricTypeDoesntMatchBegin()
         {
             mockDateTime.UtcNow.Returns<System.DateTime>
             (
@@ -463,7 +463,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 testMetricLoggerBuffer.DequeueAndProcessMetricEvents();
             });
 
-            Assert.That(e.Message, Does.StartWith($"Received cancel '{new MessageProcessingTime().Name}' with no corresponding start interval metric."));
+            Assert.That(e.Message, Does.StartWith($"Received cancel '{new MessageProcessingTime().Name}' with no corresponding begin interval metric."));
         }
 
         [Test]
@@ -493,7 +493,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 testMetricLoggerBuffer.DequeueAndProcessMetricEvents();
             });
 
-            Assert.That(e.Message, Does.StartWith($"Received cancel '{new MessageProcessingTime().Name}' with BeginId '{beginId}' with no corresponding start interval metric."));
+            Assert.That(e.Message, Does.StartWith($"Received cancel '{new MessageProcessingTime().Name}' with BeginId '{beginId}' with no corresponding begin interval metric."));
         }
 
         [Test]
@@ -515,7 +515,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 testMetricLoggerBuffer.DequeueAndProcessMetricEvents();
             });
 
-            Assert.That(e.Message, Does.StartWith($"Received cancel '{new MessageProcessingTime().Name}' with no corresponding start interval metric."));
+            Assert.That(e.Message, Does.StartWith($"Received cancel '{new MessageProcessingTime().Name}' with no corresponding begin interval metric."));
         }
 
         [Test]
@@ -538,7 +538,7 @@ namespace ApplicationMetrics.MetricLoggers.UnitTests
                 testMetricLoggerBuffer.DequeueAndProcessMetricEvents();
             });
 
-            Assert.That(e.Message, Does.StartWith($"Received cancel '{new MessageProcessingTime().Name}' with BeginId '{beginId}' with no corresponding start interval metric."));
+            Assert.That(e.Message, Does.StartWith($"Received cancel '{new MessageProcessingTime().Name}' with BeginId '{beginId}' with no corresponding begin interval metric."));
         }
 
         [Test]

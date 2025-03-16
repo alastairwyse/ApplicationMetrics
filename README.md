@@ -236,6 +236,12 @@ A detailed sample implementation...<br>
     <td><b>Changes</b></td>
   </tr>
   <tr>
+    <td valign="top">7.0.0</td>
+    <td>  
+      Corrected 'Operations that change non-concurrent collections must have exclusive access' exception when calling methods on the MetricLoggerBase class concurrently from multiple threads.
+    </td>
+  </tr>
+  <tr>
     <td valign="top">6.4.1</td>
     <td>  
       Further refactoring to allow introducing MetricLogger implementations which adapt to other metric frameworks.

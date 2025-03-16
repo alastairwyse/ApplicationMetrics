@@ -67,7 +67,7 @@ namespace ApplicationMetrics.MetricLoggers
         /// <param name="intervalMetricChecking">Specifies whether an exception should be thrown if the correct order of interval metric logging is not followed (e.g. End() method called before Begin()).  Note that this parameter only has an effect when running in 'non-interleaved' mode.</param>
         /// <remarks>The class uses a <see cref="Stopwatch"/> to calculate and log interval metrics.  Since the smallest unit of time supported by Stopwatch is a tick (100 nanoseconds), the smallest level of granularity supported when parameter <paramref name="intervalMetricBaseTimeUnit"/> is set to <see cref="IntervalMetricBaseTimeUnit.Nanosecond"/> is 100 nanoseconds.</remarks>
         protected MetricLoggerBuffer(IBufferProcessingStrategy bufferProcessingStrategy, IntervalMetricBaseTimeUnit intervalMetricBaseTimeUnit, bool intervalMetricChecking)
-            : base(intervalMetricBaseTimeUnit, intervalMetricChecking, new Stopwatch(), new DefaultGuidProvider())
+            : base(intervalMetricBaseTimeUnit, intervalMetricChecking, false, new Stopwatch(), new DefaultGuidProvider())
         {
             countMetricEventQueue = new Queue<CountMetricEventInstance>();
             amountMetricEventQueue = new Queue<AmountMetricEventInstance>();
