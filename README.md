@@ -1,14 +1,15 @@
 ApplicationMetrics
 ---
-ApplicationMetrics provides simple interfaces and classes to allow capturing metric and instrumentation information from a client application.  It was designed with the following goals...
+ApplicationMetrics provides simple interfaces and classes to allow capturing metric and instrumentation information from a client application.  Originally it was designed with the following goals...
 
-1. Provide interfaces which can be injected into client classes, and provide simple methods for logging metrics from these classes.
+1. Provide interfaces which can be injected into client classes, and simple methods for logging metrics from these classes.
 2. To ensure that details of how the metrics are stored and displayed is hidden behind the interfaces
 3. To provide a simple mechanism of viewing metrics through the Windows Performance Monitor (i.e. simpler than that provided by the .NET PerformanceCounter and CounterCreationData classes)\*.
-4. To provide additional implementation of metric loggers and viewers for files, console, and relational databases, plus base classes to allow consumers to easily provide their own implementations of metric loggers and viewers†.
+4. To provide additional implementation of metric loggers and viewers for files, console, and relational databases, plus base classes to allow consumers to easily provide their own implementations of metric loggers and viewers.
+
+It's since matured to provide lightweight, efficient, and high-throughput capture of metrics and telemetry data, precision down to the level of [.NET Ticks](https://learn.microsoft.com/en-us/dotnet/api/system.datetime.ticks?view=net-10.0), and supporting interfaces and adaptors to multiple backend stores and analysis tools... [SQL Server](https://github.com/alastairwyse/ApplicationMetrics.MetricLoggers.SqlServer), [PostgreSQL](https://github.com/alastairwyse/ApplicationMetrics.MetricLoggers.PostgreSql), [MongoDB](https://github.com/alastairwyse/ApplicationMetrics.MetricLoggers.MongoDb), and any platform supporting the [OpenTelemetry protocol](https://github.com/alastairwyse/ApplicationMetrics.MetricLoggers.OpenTelemetry) (Grafana, Elastic, Splunk, cloud provders, etc...).
 
 \* Note that the PerformanceCounterMetricLogger class which was used to view metrics through the Windows Performance Monitor, has been moved to a [separate project](https://github.com/alastairwyse/ApplicationMetrics.MetricLoggers.WindowsPerformanceCounter) since this project was migrated to .NET Standard.  
-† The [MetricLoggers.SqlServer](https://github.com/alastairwyse/ApplicationMetrics.MetricLoggers.SqlServer) amd [MetricLoggers.PostgreSql](https://github.com/alastairwyse/ApplicationMetrics.MetricLoggers.PostgreSql) projects serve as examples of implementing metric loggers which write to relational databases
 
 #### Getting Started
 
